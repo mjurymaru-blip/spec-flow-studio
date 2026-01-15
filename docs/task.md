@@ -1,45 +1,37 @@
-# Phase 2: Spec-Kit エディタ タスクリスト
+# Phase 4: Diff Management & Integration タスクリスト
 
 ## 概要
-YAMLでエージェント仕様を編集できるエディタの完成
+Spec-Kitの核心である「Diff駆動開発」の中核機能を実装。エージェント仕様のDesired（あるべき姿）とActual（現状）の差分を検出し、SpecPatch形式で管理する。また、Aether ConsoleとのWebSocket統合を完成させる。
 
 ---
 
 ## タスク
 
-### 2.1 YAMLパーサー統合
-- [x] js-yaml パッケージのインストール
-- [x] YAML パース・シリアライズ用ユーティリティ作成
+### 4.1 SpecPatch 実装 (Hybrid Format)
+- [ ] SpecPatch 生成ロジック (`diff-utils.ts`)
+  - 構造的差分 (JSON Patch like) の検出
+  - 自然言語要約の生成 (AI支援)
+- [ ] パッチ適用ロジック
+- [ ] ロールバック機能
 
-### 2.2 エディタUI
-- [x] CodeMirror 6 のインストール・設定
-- [x] YAML シンタックスハイライト
-- [x] エディタコンポーネント作成
+### 4.2 履歴管理 (Time Travel)
+- [ ] 履歴ストア拡張 (`history-store.ts`)
+- [ ] 履歴ビューアページ (`/history`) 実装
+  - タイムライン表示
+  - バージョン間の差分可視化
 
-### 2.3 バリデーション
-- [x] Spec-Kit形式のスキーマ定義（簡易版）
-- [x] バリデーションエラー表示（YAML構文エラー、パースエラー）
+### 4.3 Aether Console 統合 (WebSocket)
+- [ ] WebSocket クライアント実装 (`websocket.ts`)
+- [ ] Aether Console へのパッチ送信
+- [ ] Aether Console からの状態受信 (Actual State)
 
-### 2.4 制約可視化パネル
-- [x] constraints を別パネルで強調表示
-- [x] 「AIがやってはいけないこと」一覧
-
-### 2.5 テンプレート
-- [x] エージェント定義のテンプレート
-- [x] テンプレート選択UI
-
-### 2.6 ローカル保存
-- [x] localStorage への保存・読込
-- [x] 自動保存機能
-
-### 2.7 プレビュー
-- [x] YAML → 構造化ビュー（エージェント一覧）
-- [ ] エージェント間通信の可視化（Phase 3.5の図生成に統合予定）
+### 4.4 統合テスト & Polish
+- [ ] E2Eテストシナリオ
+- [ ] UI/UXの最終調整
 
 ---
 
 ## 進捗
-- 開始日: 2026-01-15
-- 完了日: 2026-01-16
-- 状態: **完了**
-- 成果物: `src/routes/editor/+page.svelte`, `SpecEditor.svelte`, `ConstraintPanel.svelte`
+- 開始日: 2026-01-16
+- 完了予定: 1週間
+- 状態: **計画中**

@@ -8,20 +8,31 @@
 	import { SpecEditor, ConstraintPanel } from '$lib/components/editor';
 	import {
 		parseSpecYaml,
-		stringifySpecs,
 		getYamlErrors,
 		AGENT_TEMPLATE,
 		ANALYZER_TEMPLATE
 	} from '$lib/utils/yaml-utils';
-	import { saveSpecYaml, loadSpecYaml } from '$lib/utils/storage-utils';
+	import { saveSpecYaml, loadSpecYaml, loadFromStorage } from '$lib/utils/storage-utils';
 	import { setSpecs, specs } from '$lib/stores/spec-store';
+	import { settings } from '$lib/stores/settings-store';
+	import { session } from '$lib/stores/session-store';
+	import { decryptData } from '$lib/utils/crypto-utils';
+	import { addArtifact } from '$lib/stores/artifact-store';
 	import type { YamlError } from '$lib/utils/yaml-utils';
+	import type { ArtifactType } from '$lib/types';
+	import { goto } from '$app/navigation';
 
 	// 状態
 	let yamlContent = $state('');
 	let yamlErrors = $state<YamlError[]>([]);
 	let isDirty = $state(false);
 	let currentTemplate = $state('default');
+
+	// 生成モーダル状態
+	let showGenerateModal = $state(false);
+	let isGenerating = $state(false);
+	let selectedArtifactType = $state<ArtifactType>('ui-mock');
+	let tempPassword = $state(''); // セッションにない場合の一時入力用
 
 	// 初期化
 	onMount(() => {
@@ -72,6 +83,96 @@
 			isDirty = false;
 		}
 	}
+
+	// 生成処理の開始
+	function startGeneration() {
+		if ($specs.length === 0) {
+			alert('有効なエージェント仕様がありません');
+			return;
+		}
+		if (!$settings.hasApiKey) {
+			alert('APIキーが設定されていません。設定ページで設定してください。');
+			goto('/settings');
+			return;
+		}
+		showGenerateModal = true;
+	}
+
+	// Artifact生成実行
+	async function handleGenerate() {
+		// APIキーの取得（復号化）
+		let apiKey = '';
+		try {
+			const password = $session.encryptionPassword || tempPassword;
+			if (!password) {
+				alert('APIキーの保護パスワードを入力してください');
+				return;
+			}
+
+			const encryptedKey = loadFromStorage('spec-flow-studio:api-key-encrypted', '');
+			if (!encryptedKey) {
+				throw new Error('暗号化されたAPIキーが見つかりません');
+			}
+
+			// 復号化試行
+			apiKey = await decryptData(encryptedKey, password);
+
+			// 成功したらセッションにパスワード保存
+			if (!$session.encryptionPassword) {
+				session.setPassword(password);
+			}
+		} catch (error) {
+			console.error(error);
+			alert('パスワードが間違っているか、復号化に失敗しました');
+			return;
+		}
+
+		isGenerating = true;
+		try {
+			// 最初のAgentSpecを使用（複数対応は今後）
+			const targetSpec = $specs[0];
+
+			const response = await fetch('/api/generate', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'x-api-key': apiKey
+				},
+				body: JSON.stringify({
+					spec: targetSpec,
+					artifactType: selectedArtifactType,
+					model: $settings.geminiModel
+				})
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Generation failed');
+			}
+
+			const { content } = await response.json();
+
+			// Artifactストアに追加
+			addArtifact({
+				id: crypto.randomUUID(),
+				type: selectedArtifactType,
+				name: `${targetSpec.displayName} - ${selectedArtifactType}`,
+				content: content,
+				generatedAt: new Date().toISOString(),
+				specId: targetSpec.name
+			});
+
+			showGenerateModal = false;
+			alert('生成が完了しました！ビューアで確認できます。');
+			goto('/viewer'); // ビューアへ遷移
+		} catch (error) {
+			console.error('Generation error:', error);
+			alert(`生成エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			isGenerating = false;
+			tempPassword = '';
+		}
+	}
 </script>
 
 <div class="editor-page">
@@ -84,14 +185,19 @@
 			/>
 		</div>
 		<div class="header-right">
-			<select bind:value={currentTemplate} class="template-select">
+			<select bind:value={currentTemplate} class="template-select" title="テンプレート選択">
 				<option value="default">Default Template</option>
 				<option value="analyzer">Analyzer Agent</option>
 			</select>
 			<Button variant="secondary" size="sm" onclick={applyTemplate}>Load Template</Button>
-			<Button variant="primary" size="sm" disabled={yamlErrors.length > 0}
-				>Generate Artifacts</Button
+			<Button
+				variant="accent"
+				size="sm"
+				disabled={yamlErrors.length > 0 || isGenerating}
+				onclick={startGeneration}
 			>
+				✨ Generate Artifacts
+			</Button>
 		</div>
 	</header>
 
@@ -144,6 +250,56 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- 生成モーダル -->
+	{#if showGenerateModal}
+		<div class="modal-backdrop">
+			<div class="modal">
+				<h2 class="modal-title">Generate Artifacts</h2>
+
+				<div class="modal-body">
+					<div class="form-group">
+						<label for="artifactType">生成タイプ</label>
+						<select id="artifactType" bind:value={selectedArtifactType} class="form-select">
+							<option value="ui-mock">UI Mock (HTML/Tailwind)</option>
+							<option value="api-spec">API Specification (OpenAPI)</option>
+						</select>
+					</div>
+
+					{#if !$session.encryptionPassword}
+						<div class="form-group">
+							<label for="password">暗号化パスワード</label>
+							<input
+								id="password"
+								type="password"
+								bind:value={tempPassword}
+								placeholder="APIキー保護パスワードを入力"
+								class="form-input"
+							/>
+							<p class="help-text">APIキーを復号化するために必要です。</p>
+						</div>
+					{/if}
+
+					<div class="modal-info">
+						<p>対象: <strong>{$specs[0]?.displayName || 'Agent'}</strong></p>
+						<p>モデル: <strong>{$settings.geminiModel}</strong></p>
+					</div>
+				</div>
+
+				<div class="modal-footer">
+					<Button variant="ghost" onclick={() => (showGenerateModal = false)}>キャンセル</Button>
+					<Button
+						variant="accent"
+						loading={isGenerating}
+						disabled={isGenerating || (!$session.encryptionPassword && !tempPassword)}
+						onclick={handleGenerate}
+					>
+						生成開始
+					</Button>
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -153,6 +309,7 @@
 		flex-direction: column;
 		gap: var(--space-4);
 		animation: fade-in var(--transition-base) ease-out;
+		position: relative;
 	}
 
 	.editor-header {
@@ -266,5 +423,77 @@
 			height: auto;
 			max-height: 300px;
 		}
+	}
+
+	/* Modal */
+	.modal-backdrop {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.7);
+		backdrop-filter: blur(4px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+
+	.modal {
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-lg);
+		padding: var(--space-6);
+		width: 100%;
+		max-width: 400px;
+		box-shadow: var(--shadow-xl);
+	}
+
+	.modal-title {
+		font-size: var(--font-size-lg);
+		font-weight: 600;
+		margin-bottom: var(--space-4);
+		color: var(--color-text-primary);
+	}
+
+	.modal-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		margin-bottom: var(--space-6);
+	}
+
+	.form-select,
+	.form-input {
+		width: 100%;
+		padding: var(--space-3);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-md);
+		color: var(--color-text-primary);
+		font-size: var(--font-size-sm);
+	}
+
+	.help-text {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		margin-top: var(--space-1);
+	}
+
+	.modal-info {
+		padding: var(--space-3);
+		background: rgba(0, 212, 255, 0.1);
+		border-radius: var(--radius-md);
+		font-size: var(--font-size-sm);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.modal-footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2);
 	}
 </style>

@@ -2,20 +2,123 @@
   Settings Page - 設定
 -->
 <script lang="ts">
-	import { Panel, Button } from '$lib/components/ui';
+	import { Panel, Button, StatusIndicator } from '$lib/components/ui';
 	import { integrationConfig, updateConfig } from '$lib/stores/integration-store';
+	import { settings } from '$lib/stores/settings-store';
+	import { session } from '$lib/stores/session-store';
+	import { encryptData, decryptData } from '$lib/utils/crypto-utils';
+	import { saveToStorage, loadFromStorage, STORAGE_KEYS } from '$lib/utils/storage-utils';
 
+	// Aether Console Settings
 	let consoleUrl = $state($integrationConfig.consoleUrl);
 	let autoSync = $state($integrationConfig.autoSync);
 	let syncInterval = $state($integrationConfig.syncInterval);
 
-	function saveSettings() {
+	function saveIntegrationSettings() {
 		updateConfig({
 			consoleUrl,
 			autoSync,
 			syncInterval
 		});
-		// TODO: 保存成功のフィードバック
+		alert('連携設定を保存しました');
+	}
+
+	// AI Settings
+	let apiKeyInput = $state('');
+	let passwordInput = $state('');
+	let isApiKeyLoading = $state(false);
+	let isModelRefreshing = $state(false);
+
+	async function saveApiKey() {
+		if (!apiKeyInput || !passwordInput) {
+			alert('APIキーとパスワードを入力してください');
+			return;
+		}
+
+		isApiKeyLoading = true;
+		try {
+			// 暗号化して保存
+			const encrypted = await encryptData(apiKeyInput, passwordInput);
+			saveToStorage('spec-flow-studio:api-key-encrypted', encrypted);
+
+			// パスワードをセッションに保持
+			session.setPassword(passwordInput);
+
+			// 設定更新
+			settings.updateSettings({ hasApiKey: true });
+
+			// モデル一覧の取得を試行
+			await refreshModels(apiKeyInput);
+
+			// 入力クリア
+			apiKeyInput = '';
+			passwordInput = '';
+
+			alert('APIキーを暗号化して保存し、モデル一覧を更新しました');
+		} catch (error) {
+			console.error(error);
+			alert('APIキーの保存に失敗しました');
+		} finally {
+			isApiKeyLoading = false;
+		}
+	}
+
+	async function refreshModels(apiKeyRaw?: string) {
+		let apiKey = apiKeyRaw;
+
+		// 引数がない場合は保存されたキーを復号化して使用
+		if (!apiKey && $settings.hasApiKey && $session.encryptionPassword) {
+			const encryptedKey = loadFromStorage('spec-flow-studio:api-key-encrypted', '');
+			if (encryptedKey) {
+				try {
+					apiKey = await decryptData(encryptedKey, $session.encryptionPassword);
+				} catch (e) {
+					console.error('Failed to decrypt API key for model refresh', e);
+				}
+			}
+		}
+
+		if (!apiKey) {
+			console.log('Skipping model refresh: No API key available');
+			return;
+		}
+
+		isModelRefreshing = true;
+		try {
+			const res = await fetch('/api/models', {
+				headers: { 'x-api-key': apiKey }
+			});
+			if (res.ok) {
+				const data = await res.json();
+				const models = data.models.map((m: any) => m.name);
+				if (models.length > 0) {
+					settings.updateSettings({ availableModels: models });
+					// 現在選択されているモデルがリストになければ、リストの最初を選択
+					if (!$settings.geminiModel || !models.includes($settings.geminiModel)) {
+						settings.updateSettings({ geminiModel: models[0] });
+					}
+				}
+			}
+		} catch (e) {
+			console.error('Failed to refresh models', e);
+		} finally {
+			isModelRefreshing = false;
+		}
+	}
+
+	// 手動更新ボタン用ハンドラ
+	async function handleRefreshClick() {
+		if (!$session.encryptionPassword) {
+			alert('モデル一覧を更新するには、まずAPIキーを保存（または再入力）してください');
+			return;
+		}
+		await refreshModels();
+		alert('モデル一覧を更新しました');
+	}
+
+	function handleModelChange(e: Event) {
+		const select = e.target as HTMLSelectElement;
+		settings.updateSettings({ geminiModel: select.value });
 	}
 </script>
 
@@ -26,8 +129,94 @@
 	</header>
 
 	<div class="settings-grid">
+		<!-- AI設定 -->
+		<Panel title="AI 生成設定 (Gemini API)">
+			<div class="settings-form">
+				<div class="form-group">
+					<div class="model-select-header">
+						<label for="geminiModel">使用モデル</label>
+						<button
+							class="refresh-btn"
+							onclick={handleRefreshClick}
+							disabled={isModelRefreshing || !$settings.hasApiKey}
+							title="モデル一覧を更新"
+						>
+							{#if isModelRefreshing}
+								⟳ Updating...
+							{:else}
+								⟳ モデル一覧を更新
+							{/if}
+						</button>
+					</div>
+					<select
+						id="geminiModel"
+						value={$settings.geminiModel}
+						onchange={handleModelChange}
+						class="form-select"
+					>
+						{#each $settings.availableModels as model}
+							<option value={model}>{model}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="api-key-section">
+					<div class="status-row">
+						<span class="status-label">APIキー状態:</span>
+						<StatusIndicator
+							status={$settings.hasApiKey ? 'success' : 'warning'}
+							label={$settings.hasApiKey ? '設定済み (暗号化)' : '未設定'}
+						/>
+					</div>
+
+					<div class="form-group">
+						<label for="apiKey">Gemini API Key</label>
+						<input
+							id="apiKey"
+							type="password"
+							bind:value={apiKeyInput}
+							placeholder={$settings.hasApiKey ? '••••••••••••••••' : 'AIza...'}
+						/>
+					</div>
+
+					<div class="form-group">
+						<label for="password">暗号化パスワード</label>
+						<input
+							id="password"
+							type="password"
+							bind:value={passwordInput}
+							placeholder="APIキーを保護するためのパスワード"
+						/>
+						<p class="help-text">
+							※ APIキーはこのパスワードで暗号化され、ブラウザのLocalStorageに保存されます。<br />
+							※ サーバーには暗号化された状態でも保存されません。<br />
+							※ 生成機能を使用するたびにこのパスワードが必要になります（セッション中は保持）。
+						</p>
+					</div>
+
+					<div class="form-actions">
+						<Button
+							variant="primary"
+							onclick={saveApiKey}
+							disabled={!apiKeyInput || !passwordInput || isApiKeyLoading}
+							loading={isApiKeyLoading}
+						>
+							APIキーを保存
+						</Button>
+					</div>
+				</div>
+			</div>
+		</Panel>
+
+		<!-- Aether Console 連携 -->
 		<Panel title="Aether Console 連携">
-			<form class="settings-form" onsubmit={(e) => { e.preventDefault(); saveSettings(); }}>
+			<form
+				class="settings-form"
+				onsubmit={(e) => {
+					e.preventDefault();
+					saveIntegrationSettings();
+				}}
+			>
 				<div class="form-group">
 					<label for="consoleUrl">Console URL</label>
 					<input
@@ -39,11 +228,7 @@
 				</div>
 
 				<div class="form-group form-group--inline">
-					<input
-						id="autoSync"
-						type="checkbox"
-						bind:checked={autoSync}
-					/>
+					<input id="autoSync" type="checkbox" bind:checked={autoSync} />
 					<label for="autoSync">自動同期を有効にする</label>
 				</div>
 
@@ -60,7 +245,7 @@
 				</div>
 
 				<div class="form-actions">
-					<Button type="submit" variant="primary">保存</Button>
+					<Button type="submit" variant="secondary">連携設定を保存</Button>
 				</div>
 			</form>
 		</Panel>
@@ -137,13 +322,44 @@
 		align-items: center;
 	}
 
+	.model-select-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--space-2);
+	}
+
+	.refresh-btn {
+		background: none;
+		border: none;
+		color: var(--color-accent-primary);
+		font-size: var(--font-size-xs);
+		cursor: pointer;
+		padding: 0;
+		opacity: 0.8;
+		transition: opacity 0.2s;
+	}
+
+	.refresh-btn:hover {
+		opacity: 1;
+		text-decoration: underline;
+	}
+
+	.refresh-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+		text-decoration: none;
+	}
+
 	.form-group label {
 		font-size: var(--font-size-sm);
 		color: var(--color-text-secondary);
 	}
 
-	.form-group input[type="text"],
-	.form-group input[type="number"] {
+	.form-group input[type='text'],
+	.form-group input[type='password'],
+	.form-group input[type='number'],
+	.form-select {
 		padding: var(--space-3);
 		background: var(--color-bg-tertiary);
 		border: 1px solid var(--color-border-primary);
@@ -151,21 +367,46 @@
 		color: var(--color-text-primary);
 		font-family: var(--font-mono);
 		font-size: var(--font-size-sm);
+		width: 100%;
 	}
 
-	.form-group input[type="text"]:focus,
-	.form-group input[type="number"]:focus {
+	.form-group input:focus,
+	.form-select:focus {
 		outline: none;
 		border-color: var(--color-accent-primary);
 		box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
 	}
 
-	.form-group input[type="checkbox"] {
+	.form-group input[type='checkbox'] {
 		accent-color: var(--color-accent-primary);
+		width: auto;
+	}
+
+	.help-text {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		line-height: 1.4;
+		margin-top: var(--space-1);
+	}
+
+	.status-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		margin-bottom: var(--space-4);
+		padding-bottom: var(--space-4);
+		border-bottom: 1px solid var(--color-border-secondary);
+	}
+
+	.status-label {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
 	}
 
 	.form-actions {
-		margin-top: var(--space-4);
+		display: flex;
+		justify-content: flex-end;
+		margin-top: var(--space-2);
 	}
 
 	/* Data Actions */
