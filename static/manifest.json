@@ -1,0 +1,26 @@
+{
+    "name": "Spec-Flow Studio",
+    "short_name": "Spec-Flow",
+    "description": "AIワークフロー可視化・制御プラットフォーム",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a0f",
+    "theme_color": "#0a0a0f",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/favicon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/favicon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "categories": [
+        "productivity",
+        "developer tools"
+    ]
+}
