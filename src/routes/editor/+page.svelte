@@ -42,6 +42,11 @@
 	let previousSpecs = $state<AgentSpec[]>([]);
 	let commitName = $state('');
 
+	// SpecEditor参照（行ジャンプ用）
+	let specEditor:
+		| { gotoText: (text: string) => void; gotoLine: (line: number) => void }
+		| undefined;
+
 	// 初期化
 	onMount(() => {
 		const saved = loadSpecYaml();
@@ -268,14 +273,21 @@
 	<div class="editor-layout">
 		<!-- 左側: YAMLエディタ -->
 		<div class="editor-main">
-			<SpecEditor bind:value={yamlContent} onChange={handleChange} />
+			<SpecEditor bind:this={specEditor} bind:value={yamlContent} onChange={handleChange} />
 		</div>
 
 		<!-- 右側: プレビュー & 情報 -->
 		<div class="editor-sidebar">
 			<!-- 制約パネル -->
 			<div class="sidebar-section">
-				<ConstraintPanel specs={$specs} />
+				<ConstraintPanel
+					specs={$specs}
+					onConstraintClick={(agentName, constraintText) => {
+						if (specEditor) {
+							specEditor.gotoText(constraintText);
+						}
+					}}
+				/>
 			</div>
 
 			<!-- エラーパネル (エラー時のみ表示) -->

@@ -82,7 +82,7 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 - [ ] API CSRF対策
 
 ### UI/UX改善 (中優先度)
-- [ ] Constraint → YAML行ジャンプ機能
+- [x] Constraint → YAML行ジャンプ機能
 - [x] WebSocket接続状態のUI表示強化
 - [ ] 操作手順チュートリアル/GIF追加
 

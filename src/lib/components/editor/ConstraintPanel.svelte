@@ -2,26 +2,41 @@
   ConstraintPanel Component
   制約事項（Constraints）を可視化・強調表示するパネル
   ※ AIが従うべき「絶対条件」として視覚的に強調
+  ※ クリックでエディタの該当行にジャンプ
 -->
 <script lang="ts">
 	import { Panel } from '$lib/components/ui';
 	import type { AgentSpec } from '$lib/types';
 
-	interface Props {
-		specs: AgentSpec[];
+	interface ConstraintItem {
+		agentName: string;
+		content: string;
+		index: number; // constraints配列内のインデックス
 	}
 
-	let { specs }: Props = $props();
+	interface Props {
+		specs: AgentSpec[];
+		onConstraintClick?: (agentName: string, constraintText: string) => void;
+	}
 
-	// 全エージェントの制約を収集
+	let { specs, onConstraintClick }: Props = $props();
+
+	// 全エージェントの制約を収集（インデックス付き）
 	let allConstraints = $derived(
 		specs.flatMap((agent) =>
-			agent.constraints.map((constraint) => ({
+			agent.constraints.map((constraint, index) => ({
 				agentName: agent.displayName,
-				content: constraint
+				content: constraint,
+				index
 			}))
 		)
 	);
+
+	function handleClick(item: ConstraintItem) {
+		if (onConstraintClick) {
+			onConstraintClick(item.agentName, item.content);
+		}
+	}
 </script>
 
 <Panel
@@ -37,12 +52,18 @@
 		</div>
 		<div class="constraints-list">
 			{#each allConstraints as item}
-				<div class="constraint-item">
+				<button
+					class="constraint-item"
+					onclick={() => handleClick(item)}
+					title="クリックしてエディタの該当行にジャンプ"
+				>
 					<span class="constraint-agent">{item.agentName}</span>
 					<span class="constraint-content">{item.content}</span>
-				</div>
+					<span class="constraint-jump-icon">↗</span>
+				</button>
 			{/each}
 		</div>
+		<p class="constraint-hint">クリックで該当行にジャンプ</p>
 	{:else}
 		<div class="empty-constraints">
 			<span class="empty-icon">✓</span>
@@ -105,8 +126,22 @@
 		gap: var(--space-3);
 		padding: var(--space-2) var(--space-3);
 		background: rgba(239, 68, 68, 0.1);
+		border: none;
 		border-left: 3px solid var(--color-accent-error);
 		border-radius: var(--radius-sm);
+		cursor: pointer;
+		text-align: left;
+		transition: all var(--transition-fast);
+		width: 100%;
+	}
+
+	.constraint-item:hover {
+		background: rgba(239, 68, 68, 0.25);
+		transform: translateX(2px);
+	}
+
+	.constraint-item:active {
+		transform: translateX(4px);
 	}
 
 	.constraint-agent {
@@ -117,12 +152,32 @@
 		padding: 2px 6px;
 		border-radius: var(--radius-sm);
 		white-space: nowrap;
+		flex-shrink: 0;
 	}
 
 	.constraint-content {
 		font-size: var(--font-size-sm);
 		color: var(--color-text-primary);
 		line-height: 1.4;
+		flex: 1;
+	}
+
+	.constraint-jump-icon {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+		opacity: 0;
+		transition: opacity var(--transition-fast);
+	}
+
+	.constraint-item:hover .constraint-jump-icon {
+		opacity: 1;
+	}
+
+	.constraint-hint {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		text-align: center;
+		margin-top: var(--space-2);
 	}
 
 	.empty-constraints {
