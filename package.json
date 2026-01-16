@@ -40,6 +40,7 @@
 		"@codemirror/view": "^6.39.11",
 		"@google/generative-ai": "^0.24.1",
 		"codemirror": "^6.0.2",
-		"js-yaml": "^4.1.1"
+		"js-yaml": "^4.1.1",
+		"mermaid": "^11.12.2"
 	}
 }

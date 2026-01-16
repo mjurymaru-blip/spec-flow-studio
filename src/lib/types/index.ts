@@ -134,7 +134,7 @@ export const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
 /**
  * 生成物の種類
  */
-export type ArtifactType = 'ui-mock' | 'api-spec' | 'test-case' | 'use-case';
+export type ArtifactType = 'ui-mock' | 'api-spec' | 'test-case' | 'use-case-diagram';
 
 /**
  * 生成物

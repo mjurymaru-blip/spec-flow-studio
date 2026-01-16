@@ -1,0 +1,6816 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.agent/
+  workflows/
+    backup.md
+    export-context.md
+    publish.md
+    review-feedback.md
+    setup-dual-remote.md
+  rules.md
+docs/
+  development_workflow.md
+  implementation_plan.md
+  integration.ts
+  plan.md
+  roadmap.md
+  spec-kit-format.md
+  spec-patch-format.md
+  task.md
+src/
+  lib/
+    assets/
+      favicon.svg
+    components/
+      editor/
+        ConstraintPanel.svelte
+        index.ts
+        SpecEditor.svelte
+      ui/
+        Button.svelte
+        index.ts
+        Panel.svelte
+        StatusIndicator.svelte
+      MermaidDiagram.svelte
+      Sidebar.svelte
+      StatusBar.svelte
+    server/
+      gemini.ts
+    services/
+      websocket.ts
+    stores/
+      artifact-store.ts
+      history-store.ts
+      integration-store.ts
+      session-store.ts
+      settings-store.ts
+      spec-store.ts
+    types/
+      index.ts
+    utils/
+      crypto-utils.ts
+      diff-utils.ts
+      index.ts
+      prompt-utils.ts
+      storage-utils.ts
+      yaml-utils.ts
+    index.ts
+  routes/
+    api/
+      generate/
+        +server.ts
+      models/
+        +server.ts
+    editor/
+      +page.svelte
+    history/
+      +page.svelte
+    settings/
+      +page.svelte
+    viewer/
+      +page.svelte
+    +layout.svelte
+    +page.svelte
+  app.css
+  app.d.ts
+  app.html
+static/
+  favicon.png
+  favicon.svg
+  manifest.json
+  robots.txt
+.gitignore
+.npmrc
+.prettierignore
+.prettierrc
+eslint.config.js
+package.json
+README.md
+svelte.config.js
+tsconfig.json
+vite.config.ts
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="src/lib/components/MermaidDiagram.svelte">
+<!--
+  Mermaid Diagram Component
+  Mermaid図をレンダリングするコンポーネント
+-->
+<script lang="ts">
+	import { onMount } from 'svelte';
+
+	interface Props {
+		code: string;
+		id?: string;
+	}
+
+	let { code, id = 'mermaid-diagram' }: Props = $props();
+	let container: HTMLDivElement;
+	let svg = $state('');
+	let error = $state<string | null>(null);
+
+	onMount(async () => {
+		try {
+			// Mermaidを動的にインポート
+			const mermaid = await import('mermaid');
+			mermaid.default.initialize({
+				startOnLoad: false,
+				theme: 'dark',
+				themeVariables: {
+					primaryColor: '#0ea5e9',
+					primaryTextColor: '#f8fafc',
+					primaryBorderColor: '#334155',
+					lineColor: '#64748b',
+					secondaryColor: '#1e293b',
+					tertiaryColor: '#0f172a'
+				}
+			});
+
+			const { svg: renderedSvg } = await mermaid.default.render(id, code);
+			svg = renderedSvg;
+			error = null;
+		} catch (e) {
+			console.error('Mermaid render error:', e);
+			error = e instanceof Error ? e.message : 'Mermaid rendering failed';
+		}
+	});
+
+	// codeが変更されたら再レンダリング
+	$effect(() => {
+		if (code && container) {
+			(async () => {
+				try {
+					const mermaid = await import('mermaid');
+					const uniqueId = `${id}-${Date.now()}`;
+					const { svg: renderedSvg } = await mermaid.default.render(uniqueId, code);
+					svg = renderedSvg;
+					error = null;
+				} catch (e) {
+					error = e instanceof Error ? e.message : 'Mermaid rendering failed';
+				}
+			})();
+		}
+	});
+</script>
+
+<div class="mermaid-container" bind:this={container}>
+	{#if error}
+		<div class="mermaid-error">
+			<span class="error-icon">⚠️</span>
+			<span class="error-text">{error}</span>
+		</div>
+	{:else if svg}
+		{@html svg}
+	{:else}
+		<div class="mermaid-loading">Loading diagram...</div>
+	{/if}
+</div>
+
+<style>
+	.mermaid-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		min-height: 100px;
+		padding: var(--space-4);
+		background: var(--color-bg-tertiary);
+		border-radius: var(--radius-md);
+		overflow: auto;
+	}
+
+	.mermaid-container :global(svg) {
+		max-width: 100%;
+		height: auto;
+	}
+
+	.mermaid-error {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		color: var(--color-accent-warning);
+		font-size: var(--font-size-sm);
+	}
+
+	.mermaid-loading {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+</style>
+</file>
+
+<file path=".agent/workflows/backup.md">
+---
+description: Giteaにバックアップをプッシュする
+---
+# Giteaバックアップワークフロー
+
+現在の作業状態をGiteaにバックアップとしてプッシュします。
+
+## 手順
+
+// turbo
+1. `git status` で現在の状態を確認
+2. 未コミットの変更がある場合、ユーザーにコミットメッセージを確認
+// turbo
+3. `git add -A && git commit -m "<メッセージ>"` で変更をコミット
+// turbo
+4. `git push origin` でGiteaへプッシュ
+5. 完了を報告
+</file>
+
+<file path=".agent/workflows/export-context.md">
+---
+description: プロジェクトをGemini/ChatGPTレビュー用にエクスポート
+---
+# コンテキストエクスポートワークフロー
+
+repomixを使用してプロジェクト全体を1ファイルに書き出し、外部AIレビューに備えます。
+
+## 前提条件
+
+repomixがインストールされていること。
+未インストールの場合は `npm install -g repomix` を実行。
+
+## 手順
+
+// turbo
+1. `npx repomix --output context.txt` でプロジェクトをエクスポート
+2. 生成された `context.txt` の内容サマリーを報告
+3. ユーザーに「context.txt をGemini/ChatGPTに渡してレビュー依頼してください」と案内
+
+## エクスポート後のレビュー依頼テンプレート
+
+```
+以下はプロジェクトのソースコード全体です。
+以下の観点でレビューをお願いします：
+
+1. 設計・アーキテクチャの整合性
+2. セキュリティ上の懸念
+3. UI/UXの改善案
+4. パフォーマンス最適化の余地
+
+---
+[context.txtの内容をここに貼り付け]
+```
+</file>
+
+<file path=".agent/workflows/publish.md">
+---
+description: GitHubへクリーンなコミットを公開する
+---
+# GitHub公開ワークフロー
+
+開発ブランチの変更をスクッシュマージしてGitHubへ公開します。
+
+## 手順
+
+1. 現在のブランチ名と変更差分を確認する
+// turbo
+2. `git checkout main` でmainブランチに切り替える
+3. `git merge --squash <開発ブランチ名>` でスクッシュマージを実行
+4. ユーザーにコミットメッセージの内容を確認する
+5. `git commit -m "<コミットメッセージ>"` でコミットを作成
+// turbo
+6. `git push public main` でGitHubへプッシュ
+7. 完了を報告する
+</file>
+
+<file path=".agent/workflows/review-feedback.md">
+---
+description: 外部AIのレビュー結果を取り込む
+---
+# レビューフィードバック取り込みワークフロー
+
+ChatGPT/Geminiからのレビュー結果を整理し、修正を実行します。
+
+## 入力フォーマット（推奨）
+
+ユーザーは以下の形式でフィードバックを貼り付けてください：
+
+```markdown
+## 外部AIレビュー結果
+
+### 採用する指摘
+- [ ] ○○の修正
+- [ ] △△の追加
+
+### 検討が必要な指摘
+- □□について（理由: ...）
+
+### 却下する指摘
+- ××（却下理由: ...）
+```
+
+## 手順
+
+1. レビュー結果の内容を解析し、対応項目を一覧化
+2. 「採用する指摘」について、対象ファイルと修正内容を特定
+3. 修正を実行
+4. 「検討が必要な指摘」について、ユーザーと相談
+5. 修正完了後、関連ドキュメント（docs/）も更新
+6. 変更サマリーを報告
+</file>
+
+<file path=".agent/workflows/setup-dual-remote.md">
+---
+description: Gitea/GitHub Dual Remote環境のセットアップ
+---
+# Dual Remote セットアップワークフロー
+
+1つのリポジトリに2つのリモート（Gitea + GitHub）を設定します。
+
+## 前提条件
+
+- Git初期化済みであること
+- GiteaとGitHubのリポジトリURLを用意していること
+
+## 手順
+
+1. ユーザーにGiteaのリポジトリURLを確認
+2. ユーザーにGitHubのリポジトリURLを確認
+// turbo
+3. `git remote add origin <GiteaのURL>` でGiteaをoriginとして追加
+// turbo
+4. `git remote add public <GitHubのURL>` でGitHubをpublicとして追加
+// turbo
+5. `git remote -v` でリモート設定を確認
+6. 設定完了を報告
+
+## 運用ルール
+
+| リモート名 | 用途 | プッシュタイミング |
+|-----------|------|-------------------|
+| `origin` (Gitea) | バックアップ・WIP | 作業の区切りごと |
+| `public` (GitHub) | 公開・AIレビュー | スクッシュマージ後 |
+</file>
+
+<file path=".agent/rules.md">
+# Workspace Rules
+1. 常に `docs/development_workflow.md` を最優先の指示書として遵守し、全ての作業前にこのファイルの内容と現在のタスクの整合性を確認してください。
+2. ドキュメント（Plan/Task等）は必ず `docs/` ディレクトリ配下で管理してください。
+3. Plan / Task に記載された目的・スコープ・制約は、人間の承認なしに変更してはなりません。変更が必要な場合は「変更提案」として明示してください。
+4. 実装作業を開始する前に、対応する Plan / Task が docs/ 配下に存在することを必ず確認してください。
+5. 指示や仕様に曖昧さや矛盾を感じた場合、自己判断で補完せず、必ず質問または確認を行ってください。
+</file>
+
+<file path="docs/development_workflow.md">
+<!-- Antigravity Instruction -->
+このプロジェクトは上記「開発ワークフロー」に厳密に従って開発されます。
+Antigravityは常にこのドキュメントを参照し、定義されたコマンド（/backup, /publish 等）とプロセスを遵守してください。
+PlanやTaskはArtifactsではなく、`docs/` 配下のマークダウンファイルとして管理してください。
+
+# 開発ワークフロー
+
+## 重要な原則（必須）
+[!IMPORTANT]
+**Plan / Task に記載された「目的・スコープ・制約」は、人間の承認なしに変更してはならない。**
+変更が必要な場合は、必ず「変更提案」として別セクションに記述し、承認を待つこと。
+
+## 概要
+
+複数のAI（Gemini/ChatGPT/Antigravity）を活用した効率的な開発フローです。
+
+## 開発フロー図
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  1. アイディア出し: Gemini/ChatGPT                       │
+│  2. プラン作成: Antigravity → /review-feedback          │
+│  3. 実装: Antigravity                                   │
+│  4. ローカル確認: npm run dev (+ mkcert HTTPS)          │
+│  5. バックアップ: /backup (Gitea)                       │
+│  6. AIレビュー: /export-context → Gemini/ChatGPT        │
+│  7. 修正: /review-feedback → 3に戻る                    │
+│  8. 公開準備完了: /publish → GitHub Public + Pages      │
+└─────────────────────────────────────────────────────────┘
+```
+
+## 段階別リポジトリ運用
+
+| 開発段階 | リポジトリ | 確認方法 | AIレビュー |
+|----------|-----------|----------|-----------|
+| **初期開発** | Gitea | ローカルHTTP/HTTPS | repomix → 貼り付け |
+| **機能実装中** | Gitea | ローカルHTTPS | repomix → 貼り付け |
+| **公開準備** | GitHub Public | Pages | URL直接共有可能 |
+| **公開後** | GitHub Public | Pages | URL直接共有 |
+
+## ワークフローコマンド一覧
+
+| コマンド | 説明 | 使用タイミング |
+|---------|------|---------------|
+| `/backup` | Giteaにバックアップ | 作業の区切りごと |
+| `/publish` | GitHubへスクッシュマージ | 公開準備完了時 |
+| `/review-feedback` | 外部AIレビュー結果を取り込む | レビュー後 |
+| `/export-context` | repomixでエクスポート | AIレビュー依頼前 |
+| `/setup-dual-remote` | Dual Remote設定 | 初回セットアップ時 |
+
+## リモートリポジトリ構成
+
+| リモート名 | URL | 用途 |
+|-----------|-----|------|
+| `origin` | Gitea (プライベート) | 開発・バックアップ |
+| `public` | GitHub (パブリック) | 公開・Pages |
+
+## ローカルHTTPS環境（オプション）
+
+PWAのService Worker等をローカルでテストする場合：
+
+```bash
+# mkcertのインストール（初回のみ）
+sudo apt install mkcert
+mkcert -install
+mkcert localhost
+
+# 開発サーバー起動時にHTTPS有効化
+npm run dev -- --https
+```
+
+## AIレビュー依頼テンプレート
+
+```markdown
+以下はプロジェクトのソースコード全体です。
+以下の観点でレビューをお願いします：
+
+1. 設計・アーキテクチャの整合性
+2. セキュリティ上の懸念
+3. UI/UXの改善案
+4. パフォーマンス最適化の余地
+
+---
+[context.txtの内容をここに貼り付け]
+```
+
+## レビュー結果フィードバック形式
+
+外部AIからの指摘をAntigravityに渡す際の推奨フォーマット：
+
+```markdown
+## 外部AIレビュー結果
+
+### 採用する指摘
+- [ ] ○○の修正
+- [ ] △△の追加
+
+### 検討が必要な指摘
+- □□について（理由: ...）
+
+### 却下する指摘
+- ××（却下理由: ...）
+```
+</file>
+
+<file path="docs/implementation_plan.md">
+# Phase 4 実装計画: 差分管理と統合
+
+## 目標
+Spec-Flow Studioの核心機能である「Diff駆動開発」を実装する。  
+エージェント仕様の変更を検出し、`SpecPatch`形式で記録・管理する。  
+また、履歴管理（タイムトラベル）とAether ConsoleとのWebSocket連携を完成させる。
+
+## ユーザー確認事項
+
+> [!IMPORTANT]
+> **WebSocket統合**: 完全な検証にはAether Consoleの起動が必要です。  
+> Aether Consoleが利用できない場合は、WebSocket接続をモック化してローカルテストを行います。
+
+---
+
+## 変更内容
+
+### コアロジック (Diffエンジン)
+
+#### [NEW] [diff-utils.ts](file:///home/gemini1/workspace3/spec-flow-studio/src/lib/utils/diff-utils.ts)
+- `generateSpecPatch(before, after)` の実装
+  - エージェントの追加・削除・変更を検出
+  - フィールドレベルの変更を検出（constraints, capabilitiesなど）
+  - 影響度（impact）をヒューリスティックに算出
+- `applySpecPatch(spec, patch)` の実装
+  - パッチを適用して状態を更新
+
+---
+
+### 状態管理 (履歴)
+
+#### [NEW] [history-store.ts](file:///home/gemini1/workspace3/spec-flow-studio/src/lib/stores/history-store.ts)
+- `SpecPatch` のタイムラインを保存
+- Undo / Redo アクションの実装
+- `localStorage` への永続化
+
+---
+
+### UIコンポーネント
+
+#### [NEW] [history/+page.svelte](file:///home/gemini1/workspace3/spec-flow-studio/src/routes/history/+page.svelte)
+- パッチのタイムライン表示
+- 選択したパッチの詳細表示（自然言語要約 + 構造差分）
+- 「このバージョンに戻す」ボタン
+
+#### [MODIFY] [editor/+page.svelte](file:///home/gemini1/workspace3/spec-flow-studio/src/routes/editor/+page.svelte)
+- 保存時（または「コミット」ボタン押下時）にDiff生成をトリガー
+- `history-store` との連携
+
+---
+
+### 統合 (WebSocket)
+
+#### [NEW] [websocket.ts](file:///home/gemini1/workspace3/spec-flow-studio/src/lib/services/websocket.ts)
+- Spec-Flow Studio ↔ Aether Console 接続
+- メッセージタイプ: `PATCH_CREATED`, `SYNC_REQUEST`, `SYNC_RESPONSE`
+
+---
+
+## 検証計画
+
+### 自動テスト
+- **Diffロジック**: `diff-utils.ts` のユニットテスト
+  - エージェント追加・削除の検出確認
+  - ネストされたフィールド変更（constraintsなど）の検出確認
+  - パッチ適用後、元の状態が復元できることを確認
+
+### 手動検証
+1. **Diff生成**
+   - エディタでSpecを変更
+   - 履歴ビューに新しいパッチが作成されることを確認
+   - SummaryとDiffsの内容が正しいことを確認
+2. **タイムトラベル**
+   - 複数回変更を加える
+   - 「Undo」または古いパッチを選択
+   - エディタの内容が以前の状態に戻ることを確認
+3. **永続化**
+   - ページをリロード
+   - 履歴と現在の状態が復元されていることを確認
+</file>
+
+<file path="docs/integration.ts">
+/**
+ * Spec-Flow Studio Integration Types
+ * 
+ * Aether ConsoleとSpec-Flow Studioの連携用インターフェース定義
+ * Spec-Flow Studio側でも同じ型定義を使用する
+ */
+
+// ========================================
+// Spec-Kit形式（共通データモデル）
+// ========================================
+
+/**
+ * エージェント仕様
+ */
+export interface AgentSpec {
+    name: string;
+    displayName: string;
+    role: string;
+    capabilities: string[];
+    constraints: string[];
+    communication: {
+        canSendTo: string[];
+        canReceiveFrom: string[];
+    };
+}
+
+/**
+ * Spec差分（仕様変更）
+ */
+export interface SpecDiff {
+    id: string;
+    agentName: string;
+    operation: 'add' | 'remove' | 'modify';
+    path: string;
+    before?: unknown;
+    after?: unknown;
+    description: string;
+    impact: 'low' | 'medium' | 'high';
+}
+
+/**
+ * パッチ（差分の集合）
+ */
+export interface SpecPatch {
+    id: string;
+    name: string;
+    description: string;
+    diffs: SpecDiff[];
+    appliedAt?: Date;
+}
+
+// ========================================
+// 連携イベント
+// ========================================
+
+/**
+ * Aether Console → Spec-Flow Studio
+ * コンソールからスタジオへ送信するイベント
+ */
+export type ConsoleToStudioEvent =
+    | { type: 'PATCH_APPLIED'; patch: SpecPatch }
+    | { type: 'PATCH_REVERTED'; patchId: string }
+    | { type: 'AGENT_EXECUTED'; agentName: string; input: string; output: string }
+    | { type: 'PROPOSAL_GENERATED'; proposal: string; agentResults: AgentResultSummary[] }
+    | { type: 'SYNC_REQUEST'; };
+
+/**
+ * Spec-Flow Studio → Aether Console
+ * スタジオからコンソールへ送信するイベント
+ */
+export type StudioToConsoleEvent =
+    | { type: 'SPEC_UPDATED'; agents: AgentSpec[] }
+    | { type: 'PATCH_CREATED'; patch: SpecPatch }
+    | { type: 'SCENARIO_CREATED'; scenario: ScenarioSummary }
+    | { type: 'SYNC_RESPONSE'; agents: AgentSpec[]; patches: SpecPatch[] };
+
+/**
+ * エージェント実行結果の概要
+ */
+export interface AgentResultSummary {
+    agentName: string;
+    displayName: string;
+    status: 'completed' | 'error';
+    responseSummary: string;
+}
+
+/**
+ * シナリオの概要
+ */
+export interface ScenarioSummary {
+    id: string;
+    name: string;
+    description: string;
+    messageCount: number;
+}
+
+// ========================================
+// 連携設定
+// ========================================
+
+/**
+ * 連携接続設定
+ */
+export interface IntegrationConfig {
+    /** Spec-Flow StudioのWebSocket URL */
+    studioUrl: string;
+    /** 自動同期を有効にするか */
+    autoSync: boolean;
+    /** 同期間隔（ミリ秒） */
+    syncInterval: number;
+}
+
+/**
+ * デフォルトの連携設定
+ */
+export const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
+    studioUrl: 'ws://localhost:3001/api/ws',
+    autoSync: false,
+    syncInterval: 5000
+};
+</file>
+
+<file path="docs/plan.md">
+# Spec-Flow Studio 実装計画
+
+## 目的・スコープ・制約
+
+> [!IMPORTANT]
+> 以下の内容は人間の承認なしに変更してはならない。変更が必要な場合は「変更提案」セクションに記述すること。
+
+### 目的
+
+Spec-Flow Studioは、AIワークフローを可視化・制御するためのPWAアプリケーションである。
+Spec-Kit形式で仕様を記述し、AIが自動的に以下を生成する：
+
+- UIモック
+- API仕様
+- テストケース
+- ユースケース図
+
+Aether Console（SF風司令室）と連携し、「AIをどう制御するか」を可視化できるデモンストレーションツールとなる。
+
+### スコープ
+
+**含めるもの:**
+- Spec-Kitエディタ（YAML形式エージェント仕様の編集）
+- AI生成エンジン（Gemini APIによる自動生成）
+- 生成物ビューア（PWAで一覧表示）
+- 差分管理（SpecPatch作成・適用・履歴）
+- Aether Console連携（WebSocket双方向通信）
+
+**含めないもの（Phase 1では）:**
+- 複雑なユーザー認証
+- マルチテナント対応
+- サーバーサイドでの永続化（localStorageで代替）
+
+### 制約
+
+1. **技術スタック**: SvelteKit + TypeScript + Vanilla CSS
+2. **デプロイ**: GitHub Pages（Phase 1-2）→ Vercel（Phase 3）
+3. **AI API**: Gemini API を使用
+4. **連携プロトコル**: `integration.ts` で定義された型を厳守
+
+---
+
+## アーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Spec-Flow Studio                         │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │ Spec Editor │  │ AI Generator │  │ Artifact Viewer    │ │
+│  │ (Desired)   │→ │ (Gemini)    │→ │ (Actual)           │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+│         ↑                                    ↓              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │         Diff Manager (SpecPatch) - Drift検出           ││
+│  └─────────────────────────────────────────────────────────┘│
+│                           ↕                                 │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │         Integration Layer (WebSocket)                   ││
+│  └─────────────────────────────────────────────────────────┘│
+│                           ↕                                 │
+└─────────────────────────────────────────────────────────────┘
+                           ↕
+              ┌────────────────────────┐
+              │    Aether Console      │
+              │   (SF風AI司令室)       │
+              └────────────────────────┘
+```
+
+### 状態管理の3層モデル
+
+| レイヤー | 説明 | 対応UI |
+|---------|------|--------|
+| **Desired State** | Spec-Kit（YAML仕様） | エディタ |
+| **Actual State** | 生成されたArtifacts | ビューア |
+| **Drift** | 両者の乖離・パッチ履歴 | 履歴ページ |
+
+---
+
+## Phase 1: 基盤構築（目標: 1週間）
+
+**目標**: プロジェクト基盤・デザインシステム・基本レイアウトの完成
+
+### タスク
+
+| # | タスク | 詳細 |
+|---|--------|------|
+| 1.1 | プロジェクト構成整理 | ディレクトリ構造、型定義、stores配置 |
+| 1.2 | 共通型定義 | `integration.ts` を `$lib/types` へ移動・拡張 |
+| 1.3 | デザインシステム | SF風CSS変数、共通コンポーネント |
+| 1.4 | 基本レイアウト | サイドバー + メインエリア + ステータスバー |
+| 1.5 | PWA設定 | manifest.json, service worker |
+| 1.6 | ルーティング | `/editor`, `/viewer`, `/history`, `/settings` |
+| 1.7 | ダッシュボード初期表示 | 現在のSpec名、Artifact一覧、接続状態 |
+
+### ディレクトリ構成（予定）
+
+```
+src/
+├── lib/
+│   ├── components/     # 共通コンポーネント
+│   │   ├── ui/         # 基本UI (Button, Panel, etc.)
+│   │   ├── editor/     # エディタ関連
+│   │   └── viewer/     # ビューア関連
+│   ├── stores/         # Svelte stores
+│   │   ├── spec-store.ts
+│   │   ├── artifact-store.ts
+│   │   └── integration-store.ts
+│   ├── types/          # TypeScript型定義
+│   │   └── index.ts    # integration.ts の内容を含む
+│   ├── services/       # 外部連携
+│   │   ├── ai-service.ts
+│   │   └── ws-service.ts
+│   └── utils/          # ユーティリティ
+├── routes/
+│   ├── +layout.svelte
+│   ├── +page.svelte    # ダッシュボード
+│   ├── editor/         # Spec-Kit エディタ
+│   ├── viewer/         # 生成物ビューア
+│   ├── history/        # 差分履歴
+│   └── settings/       # 設定
+└── app.css             # グローバルスタイル
+```
+
+---
+
+## Phase 2: Spec-Kit エディタ（目標: 1週間）
+
+**目標**: YAMLでエージェント仕様を編集できるエディタの完成
+
+### タスク
+
+| # | タスク | 詳細 |
+|---|--------|------|
+| 2.1 | YAMLパーサー統合 | js-yaml + シンタックスハイライト |
+| 2.2 | エディタUI | CodeMirror or Monaco Editor |
+| 2.3 | バリデーション | Spec-Kit形式のスキーマ検証 |
+| 2.4 | **制約可視化パネル** | constraints を別パネルで強調表示 |
+| 2.5 | テンプレート | エージェント定義のテンプレート |
+| 2.6 | ローカル保存 | localStorage への保存・読込 |
+| 2.7 | プレビュー | YAML → 構造化ビュー |
+
+---
+
+## Phase 3.0: AI生成エンジン・コア（目標: 1週間）
+
+**目標**: UIモックとAPI仕様の自動生成
+
+### タスク
+
+| # | タスク | 詳細 |
+|---|--------|------|
+| 3.0.1 | Gemini API統合 | APIキー管理、リクエスト処理 |
+| 3.0.2 | プロンプト設計（コア） | UIモック・API仕様用テンプレート |
+| 3.0.3 | UIモック生成 | HTML/CSSコード生成 |
+| 3.0.4 | API仕様生成 | OpenAPI形式で出力（Structured Output活用） |
+| 3.0.5 | 生成ログ保存 | 使用Spec、生成理由（rationale）を記録 |
+
+---
+
+## Phase 3.5: AI生成エンジン・拡張（目標: 1週間）
+
+**目標**: テストケース・ユースケース図の生成とストリーミング対応
+
+### タスク
+
+| # | タスク | 詳細 |
+|---|--------|------|
+| 3.5.1 | プロンプト設計（拡張） | Test・UC用テンプレート |
+| 3.5.2 | テストケース生成 | Jest/Vitest形式で出力 |
+| 3.5.3 | ユースケース図生成 | Mermaid形式で出力 |
+| 3.5.4 | Mermaidレンダリング | mermaid.js統合 |
+| 3.5.5 | ストリーミング対応 | 生成中のリアルタイム表示 |
+
+---
+
+## Phase 4: 差分管理・連携（目標: 2週間）
+
+**目標**: 差分管理とAether Console連携
+
+### タスク
+
+| # | タスク | 詳細 |
+|---|--------|------|
+| 4.1 | SpecDiff生成 | 仕様変更の差分検出 |
+| 4.2 | SpecPatch管理 | パッチの作成・適用・履歴 |
+| 4.3 | 差分ビジュアライズ | 変更箇所のハイライト表示 |
+| 4.4 | WebSocket実装 | Aether Consoleとの通信基盤 |
+| 4.5 | イベント送受信 | ConsoleToStudioEvent / StudioToConsoleEvent |
+| 4.6 | 同期機能 | 仕様・パッチの自動同期 |
+| 4.7 | **Rollback機能** | 任意のSpecPatchまで仕様を巻き戻し |
+
+---
+
+## 成果物一覧
+
+| Phase | 成果物 | 説明 |
+|-------|--------|------|
+| 1 | 基本レイアウト | SF風PWAシェル |
+| 2 | Spec-Kitエディタ | YAML編集UI + 制約可視化 |
+| 3.0 | AI生成（コア） | UIモック + API仕様 |
+| 3.5 | AI生成（拡張） | Test + UC + ストリーミング |
+| 4 | 差分管理・連携 | Aether Console連携 + Rollback |
+
+---
+
+## 関連ドキュメント
+
+- [spec-patch-format.md](./spec-patch-format.md) - SpecPatch形式の定義
+
+---
+
+## 変更提案
+
+（現時点では提案なし）
+
+---
+
+## 承認履歴
+
+| 日付 | 承認者 | 内容 |
+|------|--------|------|
+| 2026-01-15 | ChatGPT / Gemini | 外部AIレビュー完了・GO判断 |
+| 2026-01-15 | ユーザー | Phase分割・SpecPatch形式・AI静的解析延期を承認 |
+</file>
+
+<file path="docs/roadmap.md">
+# Aether Console ロードマップ
+
+## 概要
+
+Aether ConsoleはSF風のAIオペレーションルームPWA。複数のAIエージェントを可視化・制御し、最終的にはSpec-Flow Studioを監視する。
+
+## 開発方針
+
+```
+Aether Console (先行開発)
+     ↓
+Spec-Kit形式を設計・共通化
+     ↓
+Spec-Flow Studio (後続開発)
+     ↓
+両者連携で完成
+```
+
+---
+
+## Phase 1: フロントエンド完成
+
+**目標**: SF風司令室UIの完成、モックデータでの動作確認
+
+| タスク | 状態 | 詳細 |
+|--------|------|------|
+| SvelteKitプロジェクト初期化 | ✅ | TypeScript, PWA設定済み |
+| SF風デザインシステム | ✅ | global.css, Panel, GlitchText, StatusIndicator |
+| 司令室レイアウト | ⬜ | 複数パネルのグリッドレイアウト |
+| エージェントパネル | ⬜ | 各エージェントの状態表示 |
+| コンソール出力表示 | ⬜ | ログ/メッセージのストリーム表示 |
+| GitHub Pages デプロイ | ⬜ | adapter-static設定 |
+
+**成果物**: 静的なSF風ダッシュボード（モックデータ）
+
+---
+
+## Phase 2: 静的シミュレーション
+
+**目標**: 「AIがいなくても、"AIが制御されている感覚"が体験できる」
+
+| タスク | 状態 | 詳細 |
+|--------|------|------|
+| Spec-Kit形式設計 | ✅ | エージェント定義のYAML/JSON形式 |
+| モックシナリオ作成 | ⬜ | 事前定義した会話シナリオ |
+| シナリオ再生機能 | ⬜ | タイムライン上でシナリオを再生 |
+| エージェント間会話表示 | ⬜ | 会話のビジュアライズ |
+| Spec差分の適用・再生 | ⬜ | 仕様変更の即時反映 |
+| 差分による挙動変化の可視化 | ⬜ | エージェント責任境界の可視化 |
+
+**成果物**: 
+- シナリオ再生可能なデモ
+- Spec差分 → 挙動変化の可視化
+- 将来生成されるUI/API/Testの"予告表示"（Spec-Flow Studioの"影"）
+
+---
+
+## Phase 3: AI統合
+
+**目標**: 実際のAI APIと接続、リアルタイム動作
+
+| タスク | 状態 | 詳細 |
+|--------|------|------|
+| AIエージェント実行基盤 | ⬜ | Gemini/Claude API連携 |
+| エージェント状態管理 | ⬜ | Svelte storeでリアルタイム状態管理 |
+| WebSocket/SSE接続 | ⬜ | リアルタイム通信 |
+| 提案統合機能 | ⬜ | 複数エージェント出力のまとめ |
+| Spec-Flow Studio連携 | ⬜ | 監視対象との接続 |
+
+**成果物**: 実際にAIが動作する司令室
+
+---
+
+## エージェント構成（予定）
+
+| エージェント | 役割 | 監視対象 |
+|-------------|------|---------|
+| **Analyzer** | 情報解析 | 入力データの分析 |
+| **Predictor** | 予測 | トレンド・リスク予測 |
+| **Planner** | 計画立案 | 次のアクション提案 |
+| **Monitor** | リスク監視 | 異常検知・アラート |
+
+---
+
+## 技術スタック
+
+| レイヤー | 技術 |
+|---------|------|
+| フロントエンド | SvelteKit + TypeScript |
+| スタイリング | Vanilla CSS |
+| PWA | vite-plugin-pwa |
+| デプロイ | GitHub Pages → Vercel（Phase 3） |
+| AI API | Gemini / Claude（Phase 3） |
+| 通信 | WebSocket / SSE（Phase 3） |
+
+---
+
+## マイルストーン
+
+| マイルストーン | 目標日 | 内容 |
+|---------------|--------|------|
+| M1: UI基盤完成 | - | Phase 1完了 |
+| M2: デモ可能 | - | Phase 2完了、シナリオ再生 |
+| M3: AI統合 | - | Phase 3完了、リアルタイム動作 |
+| M4: Spec-Flow連携 | - | Spec-Flow Studioと連携 |
+</file>
+
+<file path="docs/spec-kit-format.md">
+# Spec-Kit エージェント定義形式（Draft）
+
+## 概要
+
+Spec-Kitは、AIエージェントの役割・能力・制約を宣言的に定義するフォーマット。
+Aether ConsoleとSpec-Flow Studioの両方で共通利用する。
+
+---
+
+## 基本構造
+
+```yaml
+# agent.spec.yaml
+kind: Agent
+version: v1
+metadata:
+  name: analyzer
+  displayName: "Analyzer"
+  description: "情報解析エージェント"
+  icon: "🔍"
+
+spec:
+  role: |
+    入力データを分析し、構造化された情報を抽出する。
+    パターンや異常を検出し、他のエージェントに報告する。
+
+  capabilities:
+    - data-analysis
+    - pattern-recognition
+    - anomaly-detection
+
+  constraints:
+    - "推測で情報を補完しない"
+    - "確信度が低い場合は明示する"
+
+  inputs:
+    - type: text
+      description: "分析対象のテキストデータ"
+    - type: structured-data
+      description: "JSON形式の構造化データ"
+
+  outputs:
+    - type: analysis-report
+      schema:
+        findings: string[]
+        confidence: number
+        anomalies: string[]
+
+  triggers:
+    - event: data-received
+      action: analyze
+    - event: request-from-planner
+      action: deep-analyze
+
+  communication:
+    canSendTo:
+      - predictor
+      - planner
+      - monitor
+    canReceiveFrom:
+      - planner
+      - monitor
+
+  # Aether Consoleへの公開設定
+  observability:
+    expose:
+      - status
+      - progress
+      - metrics.errorRate
+    logLevel: info
+```
+
+---
+
+## エージェント間通信
+
+```yaml
+# message.spec.yaml
+kind: Message
+version: v1
+metadata:
+  id: "msg-001"
+  from: analyzer
+  to: predictor
+  timestamp: "2026-01-14T00:30:00Z"
+
+spec:
+  type: analysis-complete
+  priority: normal
+  content:
+    summary: "データ分析完了"
+    findings:
+      - "トラフィックパターンに異常なし"
+      - "CPU使用率が通常より20%高い"
+    confidence: 0.85
+    requestPrediction: true
+```
+
+---
+
+## エージェント状態
+
+```yaml
+# state.spec.yaml
+kind: AgentState
+version: v1
+metadata:
+  agentName: analyzer
+  timestamp: "2026-01-14T00:30:00Z"
+
+spec:
+  status: active  # active | idle | warning | error | offline
+  currentTask: "analyzing-input-001"
+  progress: 0.65
+  lastActivity: "2026-01-14T00:29:55Z"
+  metrics:
+    tasksCompleted: 42
+    averageResponseTime: 1.2s
+    errorRate: 0.02
+```
+
+---
+
+## シナリオ定義（Phase 2用）
+
+```yaml
+# scenario.spec.yaml
+kind: Scenario
+version: v1
+metadata:
+  name: "basic-analysis-flow"
+  description: "基本的な分析フロー"
+
+spec:
+  steps:
+    - time: 0
+      action: set-state
+      agent: analyzer
+      state: { status: idle }
+
+    - time: 1000
+      action: set-state
+      agent: analyzer
+      state: { status: active, currentTask: "analyzing-input" }
+
+    - time: 2000
+      action: send-message
+      from: analyzer
+      to: predictor
+      message:
+        type: analysis-complete
+        content: { summary: "分析完了", confidence: 0.9 }
+
+    - time: 3000
+      action: set-state
+      agent: predictor
+      state: { status: active }
+
+    - time: 5000
+      action: console-log
+      message: "[Predictor] 予測モデルを実行中..."
+```
+
+---
+
+## 設計原則
+
+1. **宣言的**: 「何をするか」を記述、「どうやるか」は実装が決める
+2. **型安全**: スキーマでinput/outputを明確化
+3. **疎結合**: エージェント間はメッセージで通信
+4. **可視化しやすい**: Aether Consoleでの表示を意識した構造
+
+---
+
+## 今後の検討事項
+
+- [ ] スキーマバリデーション（JSON Schema / Zod）
+- [ ] エージェントのホットリロード
+- [ ] 会話履歴の永続化
+- [ ] 複数シナリオの切り替え
+</file>
+
+<file path="docs/spec-patch-format.md">
+# SpecPatch 形式定義
+
+## 概要
+
+SpecPatchは、Spec-Kit仕様の差分を管理するためのハイブリッド形式。
+機械的な処理と人間・AIの理解の両方に対応する。
+
+---
+
+## 基本構造
+
+```yaml
+kind: SpecPatch
+version: v1
+metadata:
+  id: patch-001
+  name: "推測禁止制約の追加"
+  createdAt: 2026-01-15T23:00:00Z
+  author: human  # human | ai | system
+
+spec:
+  # 構造的差分（機械処理用）
+  diffs:
+    - id: diff-001
+      agentName: analyzer
+      operation: add        # add | remove | modify
+      path: spec.constraints
+      before: null
+      after: "外部データを推測で補完しない"
+      impact: medium        # low | medium | high
+  
+  # 自然言語要約（人間・AI理解用）
+  summary: "Analyzerエージェントに推測禁止の制約を追加"
+  rationale: "過度な推論による誤分析を防ぐため"
+  
+  # 適用状態
+  appliedAt: null           # 適用日時（未適用はnull）
+```
+
+---
+
+## フィールド定義
+
+### metadata
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `id` | string | ✓ | パッチの一意識別子 |
+| `name` | string | ✓ | パッチの短い名前 |
+| `createdAt` | ISO8601 | ✓ | 作成日時 |
+| `author` | enum | ✓ | 作成者種別 (`human` / `ai` / `system`) |
+
+### spec.diffs[]
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `id` | string | ✓ | 差分の一意識別子 |
+| `agentName` | string | ✓ | 対象エージェント名 |
+| `operation` | enum | ✓ | 操作種別 (`add` / `remove` / `modify`) |
+| `path` | string | ✓ | 変更パス（JSONPath形式） |
+| `before` | any | - | 変更前の値（add時はnull） |
+| `after` | any | - | 変更後の値（remove時はnull） |
+| `impact` | enum | ✓ | 影響度 (`low` / `medium` / `high`) |
+
+### spec（トップレベル）
+
+| フィールド | 型 | 必須 | 説明 |
+|-----------|-----|------|------|
+| `diffs` | array | ✓ | 差分の配列 |
+| `summary` | string | ✓ | 変更の自然言語要約 |
+| `rationale` | string | - | 変更理由（なぜこの変更が必要か） |
+| `appliedAt` | ISO8601 | - | 適用日時（未適用はnull） |
+
+---
+
+## 操作例
+
+### 1. 制約の追加
+
+```yaml
+diffs:
+  - id: diff-001
+    agentName: analyzer
+    operation: add
+    path: spec.constraints
+    before: null
+    after: "外部データを推測で補完しない"
+    impact: medium
+```
+
+### 2. 能力の変更
+
+```yaml
+diffs:
+  - id: diff-002
+    agentName: predictor
+    operation: modify
+    path: spec.capabilities[0]
+    before: "trend-prediction"
+    after: "advanced-trend-prediction"
+    impact: low
+```
+
+### 3. 通信先の削除
+
+```yaml
+diffs:
+  - id: diff-003
+    agentName: monitor
+    operation: remove
+    path: spec.communication.canSendTo[2]
+    before: "deprecated-agent"
+    after: null
+    impact: high
+```
+
+---
+
+## TypeScript型定義
+
+```typescript
+export interface SpecPatch {
+  kind: 'SpecPatch';
+  version: 'v1';
+  metadata: {
+    id: string;
+    name: string;
+    createdAt: string;  // ISO8601
+    author: 'human' | 'ai' | 'system';
+  };
+  spec: {
+    diffs: SpecDiff[];
+    summary: string;
+    rationale?: string;
+    appliedAt?: string;  // ISO8601
+  };
+}
+
+export interface SpecDiff {
+  id: string;
+  agentName: string;
+  operation: 'add' | 'remove' | 'modify';
+  path: string;
+  before?: unknown;
+  after?: unknown;
+  impact: 'low' | 'medium' | 'high';
+}
+```
+
+---
+
+## Aether Console連携
+
+### パッチ適用イベント
+
+```typescript
+// Console → Studio
+{ type: 'PATCH_APPLIED', patch: SpecPatch }
+
+// Studio → Console
+{ type: 'PATCH_CREATED', patch: SpecPatch }
+```
+
+### Rollback
+
+Rollbackは、指定したパッチまでの全パッチを逆順で `remove` / `add` を反転して適用する。
+
+---
+
+## 設計原則
+
+1. **ハイブリッド**: 構造diff（機械用）+ 自然言語（人間・AI用）
+2. **追跡可能**: 誰が・いつ・なぜ変更したかを記録
+3. **可逆**: Rollbackに必要な情報を保持
+4. **連携対応**: Aether Consoleのイベント形式と互換
+</file>
+
+<file path="src/lib/assets/favicon.svg">
+<svg xmlns="http://www.w3.org/2000/svg" width="107" height="128" viewBox="0 0 107 128"><title>svelte-logo</title><path d="M94.157 22.819c-10.4-14.885-30.94-19.297-45.792-9.835L22.282 29.608A29.92 29.92 0 0 0 8.764 49.65a31.5 31.5 0 0 0 3.108 20.231 30 30 0 0 0-4.477 11.183 31.9 31.9 0 0 0 5.448 24.116c10.402 14.887 30.942 19.297 45.791 9.835l26.083-16.624A29.92 29.92 0 0 0 98.235 78.35a31.53 31.53 0 0 0-3.105-20.232 30 30 0 0 0 4.474-11.182 31.88 31.88 0 0 0-5.447-24.116" style="fill:#ff3e00"/><path d="M45.817 106.582a20.72 20.72 0 0 1-22.237-8.243 19.17 19.17 0 0 1-3.277-14.503 18 18 0 0 1 .624-2.435l.49-1.498 1.337.981a33.6 33.6 0 0 0 10.203 5.098l.97.294-.09.968a5.85 5.85 0 0 0 1.052 3.878 6.24 6.24 0 0 0 6.695 2.485 5.8 5.8 0 0 0 1.603-.704L69.27 76.28a5.43 5.43 0 0 0 2.45-3.631 5.8 5.8 0 0 0-.987-4.371 6.24 6.24 0 0 0-6.698-2.487 5.7 5.7 0 0 0-1.6.704l-9.953 6.345a19 19 0 0 1-5.296 2.326 20.72 20.72 0 0 1-22.237-8.243 19.17 19.17 0 0 1-3.277-14.502 17.99 17.99 0 0 1 8.13-12.052l26.081-16.623a19 19 0 0 1 5.3-2.329 20.72 20.72 0 0 1 22.237 8.243 19.17 19.17 0 0 1 3.277 14.503 18 18 0 0 1-.624 2.435l-.49 1.498-1.337-.98a33.6 33.6 0 0 0-10.203-5.1l-.97-.294.09-.968a5.86 5.86 0 0 0-1.052-3.878 6.24 6.24 0 0 0-6.696-2.485 5.8 5.8 0 0 0-1.602.704L37.73 51.72a5.42 5.42 0 0 0-2.449 3.63 5.79 5.79 0 0 0 .986 4.372 6.24 6.24 0 0 0 6.698 2.486 5.8 5.8 0 0 0 1.602-.704l9.952-6.342a19 19 0 0 1 5.295-2.328 20.72 20.72 0 0 1 22.237 8.242 19.17 19.17 0 0 1 3.277 14.503 18 18 0 0 1-8.13 12.053l-26.081 16.622a19 19 0 0 1-5.3 2.328" style="fill:#fff"/></svg>
+</file>
+
+<file path="src/lib/components/editor/ConstraintPanel.svelte">
+<!--
+  ConstraintPanel Component
+  制約事項（Constraints）を可視化・強調表示するパネル
+-->
+<script lang="ts">
+	import { Panel } from '$lib/components/ui';
+	import type { AgentSpec } from '$lib/types';
+
+	interface Props {
+		specs: AgentSpec[];
+	}
+
+	let { specs }: Props = $props();
+
+	// 全エージェントの制約を収集
+	let allConstraints = $derived(
+		specs.flatMap((agent) =>
+			agent.constraints.map((constraint) => ({
+				agentName: agent.displayName,
+				content: constraint
+			}))
+		)
+	);
+</script>
+
+<Panel
+	title="制約事項 (Constraints)"
+	variant="warning"
+	glow={allConstraints.length > 0}
+	class="constraint-panel"
+>
+	{#if allConstraints.length > 0}
+		<div class="constraints-list">
+			{#each allConstraints as item}
+				<div class="constraint-item">
+					<span class="constraint-agent">{item.agentName}</span>
+					<span class="constraint-content">{item.content}</span>
+				</div>
+			{/each}
+		</div>
+	{:else}
+		<div class="empty-constraints">
+			<span class="empty-icon">✓</span>
+			<p>制約事項は定義されていません</p>
+		</div>
+	{/if}
+</Panel>
+
+<style>
+	.constraint-panel {
+		height: 100%;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.constraints-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		overflow-y: auto;
+		max-height: 200px; /* 必要に応じて調整 */
+	}
+
+	.constraint-item {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
+		background: rgba(245, 158, 11, 0.1); /* Warning color alpha */
+		border-left: 3px solid var(--color-accent-warning);
+		border-radius: var(--radius-sm);
+	}
+
+	.constraint-agent {
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		color: var(--color-accent-warning);
+		background: rgba(0, 0, 0, 0.3);
+		padding: 2px 6px;
+		border-radius: var(--radius-sm);
+		white-space: nowrap;
+	}
+
+	.constraint-content {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-primary);
+		line-height: 1.4;
+	}
+
+	.empty-constraints {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: var(--space-4);
+		color: var(--color-text-muted);
+		gap: var(--space-2);
+	}
+
+	.empty-icon {
+		font-size: var(--font-size-xl);
+		color: var(--color-accent-success);
+	}
+</style>
+</file>
+
+<file path="src/lib/components/editor/index.ts">
+export { default as SpecEditor } from './SpecEditor.svelte';
+export { default as ConstraintPanel } from './ConstraintPanel.svelte';
+</file>
+
+<file path="src/lib/components/editor/SpecEditor.svelte">
+<!--
+  SpecEditor Component
+  CodeMirror 6 を使用したYAMLエディタ
+-->
+<script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+	import { EditorView, basicSetup } from 'codemirror';
+	import { EditorState } from '@codemirror/state';
+	import { yaml } from '@codemirror/lang-yaml';
+	import { oneDark } from '@codemirror/theme-one-dark';
+	import { keymap } from '@codemirror/view';
+	import { defaultKeymap } from '@codemirror/commands';
+
+	interface Props {
+		value: string;
+		readonly?: boolean;
+		onChange?: (value: string) => void;
+	}
+
+	let { value = $bindable(), readonly = false, onChange }: Props = $props();
+
+	let editorElement: HTMLElement;
+	let editorView: EditorView;
+
+	// エディタの初期化
+	onMount(() => {
+		if (!editorElement) return;
+
+		const state = EditorState.create({
+			doc: value,
+			extensions: [
+				basicSetup,
+				keymap.of(defaultKeymap),
+				yaml(),
+				oneDark,
+				EditorView.updateListener.of((update) => {
+					if (update.docChanged) {
+						const newValue = update.state.doc.toString();
+						value = newValue; // 双方向バインディング更新
+						if (onChange) onChange(newValue);
+					}
+				}),
+				EditorView.editable.of(!readonly),
+				EditorView.theme({
+					'&': { height: '100%', fontSize: '14px' },
+					'.cm-scroller': { fontFamily: 'var(--font-mono)' }
+				})
+			]
+		});
+
+		editorView = new EditorView({
+			state,
+			parent: editorElement
+		});
+	});
+
+	// props.value が外部から変更された場合にエディタに反映
+	// (エディタ自身の変更による更新ループを防ぐため、内容が異なる場合のみ更新)
+	$effect(() => {
+		if (editorView && value !== editorView.state.doc.toString()) {
+			editorView.dispatch({
+				changes: {
+					from: 0,
+					to: editorView.state.doc.length,
+					insert: value
+				}
+			});
+		}
+	});
+
+	onDestroy(() => {
+		if (editorView) {
+			editorView.destroy();
+		}
+	});
+</script>
+
+<div class="editor-container" bind:this={editorElement}></div>
+
+<style>
+	.editor-container {
+		width: 100%;
+		height: 100%;
+		overflow: hidden;
+		border-radius: var(--radius-md);
+		border: 1px solid var(--color-border-primary);
+	}
+	
+	/* CodeMirrorのスタイル調整 */
+	:global(.cm-editor) {
+		height: 100%;
+	}
+	
+	:global(.cm-scroller) {
+		overflow: auto;
+	}
+</style>
+</file>
+
+<file path="src/lib/components/ui/Button.svelte">
+<!--
+  Button Component
+  SF風のボタンコンポーネント
+-->
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+	import type { HTMLButtonAttributes } from 'svelte/elements';
+
+	interface Props extends HTMLButtonAttributes {
+		variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+		size?: 'sm' | 'md' | 'lg';
+		loading?: boolean;
+		children?: Snippet;
+	}
+
+	let {
+		variant = 'primary',
+		size = 'md',
+		loading = false,
+		disabled,
+		children,
+		...restProps
+	}: Props = $props();
+</script>
+
+<button
+	class="btn btn--{variant} btn--{size}"
+	class:btn--loading={loading}
+	disabled={disabled || loading}
+	{...restProps}
+>
+	{#if loading}
+		<span class="btn__spinner"></span>
+	{/if}
+	<span class="btn__content" class:btn__content--hidden={loading}>
+		{#if children}
+			{@render children()}
+		{/if}
+	</span>
+</button>
+
+<style>
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: var(--space-2);
+		font-family: var(--font-sans);
+		font-weight: 500;
+		border: 1px solid transparent;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		transition: all var(--transition-fast);
+		position: relative;
+		overflow: hidden;
+	}
+
+	.btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	/* Sizes */
+	.btn--sm {
+		padding: var(--space-1) var(--space-3);
+		font-size: var(--font-size-xs);
+	}
+
+	.btn--md {
+		padding: var(--space-2) var(--space-4);
+		font-size: var(--font-size-sm);
+	}
+
+	.btn--lg {
+		padding: var(--space-3) var(--space-6);
+		font-size: var(--font-size-base);
+	}
+
+	/* Variants */
+	.btn--primary {
+		background: var(--gradient-primary);
+		color: white;
+		border-color: var(--color-accent-primary);
+	}
+
+	.btn--primary:hover:not(:disabled) {
+		box-shadow: var(--shadow-glow);
+		transform: translateY(-1px);
+	}
+
+	.btn--secondary {
+		background: var(--color-bg-tertiary);
+		color: var(--color-text-primary);
+		border-color: var(--color-border-primary);
+	}
+
+	.btn--secondary:hover:not(:disabled) {
+		background: var(--color-bg-hover);
+		border-color: var(--color-accent-primary);
+	}
+
+	.btn--ghost {
+		background: transparent;
+		color: var(--color-text-secondary);
+		border-color: transparent;
+	}
+
+	.btn--ghost:hover:not(:disabled) {
+		background: var(--color-bg-hover);
+		color: var(--color-text-primary);
+	}
+
+	.btn--danger {
+		background: var(--color-accent-error);
+		color: white;
+		border-color: var(--color-accent-error);
+	}
+
+	.btn--danger:hover:not(:disabled) {
+		background: #dc2626;
+		box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+	}
+
+	/* Loading */
+	.btn__spinner {
+		position: absolute;
+		width: 16px;
+		height: 16px;
+		border: 2px solid transparent;
+		border-top-color: currentColor;
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	.btn__content--hidden {
+		visibility: hidden;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+</style>
+</file>
+
+<file path="src/lib/components/ui/index.ts">
+// UI Components
+export { default as Panel } from './Panel.svelte';
+export { default as Button } from './Button.svelte';
+export { default as StatusIndicator } from './StatusIndicator.svelte';
+</file>
+
+<file path="src/lib/components/ui/Panel.svelte">
+<!--
+  Panel Component
+  SF風のパネルコンポーネント
+-->
+<script lang="ts">
+	interface Props {
+		title?: string;
+		variant?: 'default' | 'accent' | 'success' | 'warning' | 'error';
+		glow?: boolean;
+		class?: string;
+		children?: import('svelte').Snippet;
+		header?: import('svelte').Snippet;
+	}
+
+	let { title, variant = 'default', glow = false, class: className = '', children, header }: Props = $props();
+
+	const variantColors = {
+		default: 'var(--color-accent-primary)',
+		accent: 'var(--color-accent-secondary)',
+		success: 'var(--color-accent-success)',
+		warning: 'var(--color-accent-warning)',
+		error: 'var(--color-accent-error)'
+	};
+</script>
+
+<div
+	class="panel {className}"
+	class:panel--glow={glow}
+	style="--panel-accent: {variantColors[variant]}"
+>
+	{#if title || header}
+		<div class="panel__header">
+			{#if header}
+				{@render header()}
+			{:else if title}
+				<h3 class="panel__title">{title}</h3>
+			{/if}
+		</div>
+	{/if}
+	<div class="panel__content">
+		{#if children}
+			{@render children()}
+		{/if}
+	</div>
+</div>
+
+<style>
+	.panel {
+		background: var(--gradient-panel);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+	}
+
+	.panel:hover {
+		border-color: var(--panel-accent);
+	}
+
+	.panel--glow {
+		box-shadow: var(--shadow-glow);
+	}
+
+	.panel--glow:hover {
+		box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+	}
+
+	.panel__header {
+		padding: var(--space-4) var(--space-5);
+		border-bottom: 1px solid var(--color-border-secondary);
+		background: rgba(0, 0, 0, 0.2);
+	}
+
+	.panel__title {
+		font-size: var(--font-size-sm);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--panel-accent);
+		margin: 0;
+	}
+
+	.panel__content {
+		padding: var(--space-5);
+	}
+</style>
+</file>
+
+<file path="src/lib/components/ui/StatusIndicator.svelte">
+<!--
+  StatusIndicator Component
+  接続状態などを示すインジケーター
+-->
+<script lang="ts">
+	interface Props {
+		status: 'success' | 'warning' | 'error' | 'info' | 'offline';
+		label?: string;
+		pulse?: boolean;
+		size?: 'sm' | 'md' | 'lg';
+	}
+
+	let { status, label, pulse = false, size = 'md' }: Props = $props();
+
+	const statusColors = {
+		success: 'var(--color-accent-success)',
+		warning: 'var(--color-accent-warning)',
+		error: 'var(--color-accent-error)',
+		info: 'var(--color-accent-primary)',
+		offline: 'var(--color-text-muted)'
+	};
+
+	const statusLabels = {
+		success: '接続中',
+		warning: '警告',
+		error: 'エラー',
+		info: '情報',
+		offline: 'オフライン'
+	};
+</script>
+
+<div class="status status--{size}" style="--status-color: {statusColors[status]}">
+	<span class="status__dot" class:status__dot--pulse={pulse}></span>
+	{#if label !== undefined}
+		<span class="status__label">{label}</span>
+	{:else}
+		<span class="status__label">{statusLabels[status]}</span>
+	{/if}
+</div>
+
+<style>
+	.status {
+		display: inline-flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.status__dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background-color: var(--status-color);
+		flex-shrink: 0;
+	}
+
+	.status--sm .status__dot {
+		width: 6px;
+		height: 6px;
+	}
+
+	.status--lg .status__dot {
+		width: 10px;
+		height: 10px;
+	}
+
+	.status__dot--pulse {
+		animation: pulse-glow 2s ease-in-out infinite;
+		box-shadow: 0 0 8px var(--status-color);
+	}
+
+	.status__label {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.status--sm .status__label {
+		font-size: var(--font-size-xs);
+	}
+
+	.status--lg .status__label {
+		font-size: var(--font-size-base);
+	}
+
+	@keyframes pulse-glow {
+		0%, 100% {
+			opacity: 1;
+			box-shadow: 0 0 4px var(--status-color);
+		}
+		50% {
+			opacity: 0.6;
+			box-shadow: 0 0 12px var(--status-color);
+		}
+	}
+</style>
+</file>
+
+<file path="src/lib/components/Sidebar.svelte">
+<!--
+  Sidebar Component
+  ナビゲーションサイドバー
+-->
+<script lang="ts">
+	import { page } from '$app/stores';
+
+	const navItems = [
+		{ href: '/', label: 'ダッシュボード', icon: '◈' },
+		{ href: '/editor', label: 'エディタ', icon: '✎' },
+		{ href: '/viewer', label: 'ビューア', icon: '◎' },
+		{ href: '/history', label: '履歴', icon: '⧖' },
+		{ href: '/settings', label: '設定', icon: '⚙' }
+	];
+</script>
+
+<aside class="sidebar">
+	<div class="sidebar__logo">
+		<span class="sidebar__logo-icon">◇</span>
+		<span class="sidebar__logo-text">Spec-Flow</span>
+	</div>
+
+	<nav class="sidebar__nav">
+		{#each navItems as item}
+			<a
+				href={item.href}
+				class="sidebar__link"
+				class:sidebar__link--active={$page.url.pathname === item.href}
+			>
+				<span class="sidebar__link-icon">{item.icon}</span>
+				<span class="sidebar__link-label">{item.label}</span>
+			</a>
+		{/each}
+	</nav>
+
+	<div class="sidebar__footer">
+		<span class="sidebar__version">v0.1.0</span>
+	</div>
+</aside>
+
+<style>
+	.sidebar {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: var(--sidebar-width);
+		height: 100vh;
+		background: var(--gradient-panel);
+		border-right: 1px solid var(--color-border-primary);
+		display: flex;
+		flex-direction: column;
+		z-index: 100;
+	}
+
+	.sidebar__logo {
+		padding: var(--space-5);
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		border-bottom: 1px solid var(--color-border-secondary);
+	}
+
+	.sidebar__logo-icon {
+		font-size: var(--font-size-2xl);
+		color: var(--color-accent-primary);
+		animation: pulse-glow 3s ease-in-out infinite;
+	}
+
+	.sidebar__logo-text {
+		font-size: var(--font-size-lg);
+		font-weight: 600;
+		color: var(--color-text-primary);
+	}
+
+	.sidebar__nav {
+		flex: 1;
+		padding: var(--space-4);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.sidebar__link {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-3) var(--space-4);
+		border-radius: var(--radius-md);
+		color: var(--color-text-secondary);
+		text-decoration: none;
+		transition: all var(--transition-fast);
+	}
+
+	.sidebar__link:hover {
+		background: var(--color-bg-hover);
+		color: var(--color-text-primary);
+	}
+
+	.sidebar__link--active {
+		background: rgba(0, 212, 255, 0.1);
+		color: var(--color-accent-primary);
+		border-left: 2px solid var(--color-accent-primary);
+	}
+
+	.sidebar__link-icon {
+		font-size: var(--font-size-lg);
+		width: 24px;
+		text-align: center;
+	}
+
+	.sidebar__link-label {
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+	}
+
+	.sidebar__footer {
+		padding: var(--space-4);
+		border-top: 1px solid var(--color-border-secondary);
+		text-align: center;
+	}
+
+	.sidebar__version {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		font-family: var(--font-mono);
+	}
+
+	@keyframes pulse-glow {
+		0%, 100% {
+			text-shadow: 0 0 5px var(--color-accent-primary);
+		}
+		50% {
+			text-shadow: 0 0 15px var(--color-accent-primary);
+		}
+	}
+</style>
+</file>
+
+<file path="src/lib/components/StatusBar.svelte">
+<!--
+  StatusBar Component
+  画面下部のステータスバー
+-->
+<script lang="ts">
+	import { StatusIndicator } from '$lib/components/ui';
+	import { connectionStatus } from '$lib/stores/integration-store';
+	import { specCount } from '$lib/stores/spec-store';
+	import { artifacts } from '$lib/stores/artifact-store';
+
+	// 接続状態をStatusIndicatorのstatus形式に変換
+	const statusMap = {
+		disconnected: 'offline',
+		connecting: 'warning',
+		connected: 'success',
+		error: 'error'
+	} as const;
+
+	let currentStatus = $derived(statusMap[$connectionStatus]);
+	let artifactCount = $derived($artifacts.length);
+</script>
+
+<footer class="statusbar">
+	<div class="statusbar__left">
+		<StatusIndicator status={currentStatus} size="sm" pulse={$connectionStatus === 'connected'} />
+	</div>
+
+	<div class="statusbar__center">
+		<span class="statusbar__info">
+			<span class="statusbar__label">Specs:</span>
+			<span class="statusbar__value">{$specCount}</span>
+		</span>
+		<span class="statusbar__divider">|</span>
+		<span class="statusbar__info">
+			<span class="statusbar__label">Artifacts:</span>
+			<span class="statusbar__value">{artifactCount}</span>
+		</span>
+	</div>
+
+	<div class="statusbar__right">
+		<span class="statusbar__time font-mono">
+			{new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+		</span>
+	</div>
+</footer>
+
+<style>
+	.statusbar {
+		position: fixed;
+		bottom: 0;
+		left: var(--sidebar-width);
+		right: 0;
+		height: var(--statusbar-height);
+		background: var(--color-bg-secondary);
+		border-top: 1px solid var(--color-border-primary);
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 var(--space-4);
+		z-index: 100;
+	}
+
+	.statusbar__left,
+	.statusbar__right {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.statusbar__center {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.statusbar__info {
+		display: flex;
+		align-items: center;
+		gap: var(--space-1);
+		font-size: var(--font-size-xs);
+	}
+
+	.statusbar__label {
+		color: var(--color-text-muted);
+	}
+
+	.statusbar__value {
+		color: var(--color-text-primary);
+		font-family: var(--font-mono);
+	}
+
+	.statusbar__divider {
+		color: var(--color-text-muted);
+	}
+
+	.statusbar__time {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+	}
+</style>
+</file>
+
+<file path="src/lib/server/gemini.ts">
+/**
+ * Gemini API Server Service
+ *
+ * Google Gemini API との通信を担当するサーバーサイドサービス
+ * リクエストごとにAPIキーと設定を受け取り、生成を実行する
+ */
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+
+interface GenerateOptions {
+    apiKey: string;
+    modelName: string;
+    prompt: string;
+    temperature?: number;
+}
+
+export async function generateContent({ apiKey, modelName, prompt, temperature = 0.7 }: GenerateOptions) {
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+            model: modelName,
+            safetySettings: [
+                {
+                    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+            ],
+            generationConfig: {
+                temperature,
+            }
+        });
+
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        return response.text();
+    } catch (error) {
+        console.error('Gemini Generate Error:', error);
+        throw error;
+    }
+}
+
+// ストリーミング対応版 (Phase 3.5で本格利用)
+export async function generateContentStream({ apiKey, modelName, prompt, temperature = 0.7 }: GenerateOptions) {
+    try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: modelName });
+
+        const result = await model.generateContentStream(prompt);
+        return result.stream;
+    } catch (error) {
+        console.error('Gemini Stream Error:', error);
+        throw error;
+    }
+}
+
+interface ModelInfo {
+    name: string; // models/gemini-pro
+    displayName: string;
+    description: string;
+    supportedGenerationMethods: string[];
+}
+
+// モデル一覧を取得 (SDKに機能がない場合があるためREST APIを使用)
+export async function listModels(apiKey: string): Promise<ModelInfo[]> {
+    try {
+        // APIキーを使ってモデル一覧を取得
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch models: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        // generateContentをサポートしているモデルのみフィルタリング
+        return (data.models || []).filter((m: any) =>
+            m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+        ).map((m: any) => ({
+            name: m.name.replace('models/', ''), // "models/" プレフィックスを除去
+            displayName: m.displayName,
+            description: m.description,
+            supportedGenerationMethods: m.supportedGenerationMethods
+        }));
+    } catch (error) {
+        console.error('Gemini List Models Error:', error);
+        throw error;
+    }
+}
+</file>
+
+<file path="src/lib/services/websocket.ts">
+/**
+ * WebSocket Service
+ *
+ * Aether Console との WebSocket 通信を管理
+ */
+import { writable, get } from 'svelte/store';
+import type {
+    ConnectionStatus,
+    ConsoleToStudioEvent,
+    StudioToConsoleEvent,
+    AgentSpec,
+    SpecPatch
+} from '$lib/types';
+import { integrationConfig, updateStatus } from '$lib/stores/integration-store';
+import { specs } from '$lib/stores/spec-store';
+import { historyStore, patches } from '$lib/stores/history-store';
+
+// 接続状態ストア
+export const wsStatus = writable<ConnectionStatus>('disconnected');
+
+// 受信メッセージストア（最新のもの）
+export const lastReceivedEvent = writable<ConsoleToStudioEvent | null>(null);
+
+let ws: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_DELAY = 3000;
+
+/**
+ * WebSocket接続を開始
+ */
+export function connect() {
+    const config = get(integrationConfig);
+    if (!config.consoleUrl) {
+        console.warn('WebSocket URL is not configured');
+        return;
+    }
+
+    if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+        console.log('WebSocket is already connected or connecting');
+        return;
+    }
+
+    wsStatus.set('connecting');
+    updateStatus('connecting');
+
+    try {
+        ws = new WebSocket(config.consoleUrl);
+
+        ws.onopen = () => {
+            console.log('WebSocket connected to Aether Console');
+            wsStatus.set('connected');
+            updateStatus('connected');
+            reconnectAttempts = 0;
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data) as ConsoleToStudioEvent;
+                handleMessage(message);
+            } catch (e) {
+                console.error('Failed to parse WebSocket message:', e);
+            }
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            wsStatus.set('error');
+            updateStatus('error');
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket closed');
+            wsStatus.set('disconnected');
+            updateStatus('disconnected');
+            ws = null;
+            scheduleReconnect();
+        };
+    } catch (error) {
+        console.error('Failed to create WebSocket:', error);
+        wsStatus.set('error');
+        updateStatus('error');
+    }
+}
+
+/**
+ * 再接続をスケジュール
+ */
+function scheduleReconnect() {
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        console.log('Max reconnect attempts reached');
+        return;
+    }
+
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+    }
+
+    reconnectTimer = setTimeout(() => {
+        reconnectAttempts++;
+        console.log(`Reconnecting... (attempt ${reconnectAttempts})`);
+        connect();
+    }, RECONNECT_DELAY);
+}
+
+/**
+ * 接続を切断
+ */
+export function disconnect() {
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+
+    wsStatus.set('disconnected');
+    updateStatus('disconnected');
+}
+
+/**
+ * メッセージを送信
+ */
+export function send(event: StudioToConsoleEvent) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.warn('WebSocket is not connected');
+        return false;
+    }
+
+    try {
+        ws.send(JSON.stringify(event));
+        return true;
+    } catch (e) {
+        console.error('Failed to send WebSocket message:', e);
+        return false;
+    }
+}
+
+/**
+ * 受信メッセージのハンドリング
+ */
+function handleMessage(event: ConsoleToStudioEvent) {
+    lastReceivedEvent.set(event);
+
+    switch (event.type) {
+        case 'SYNC_REQUEST':
+            // Consoleからの同期リクエストに応答
+            const currentSpecs = get(specs);
+            const currentPatches = get(patches);
+            send({
+                type: 'SYNC_RESPONSE',
+                agents: currentSpecs,
+                patches: currentPatches
+            });
+            break;
+
+        case 'PATCH_APPLIED':
+            // Consoleでパッチが適用された通知
+            console.log('Patch applied on Console:', event.patch.metadata.name);
+            // TODO: 必要に応じてローカル状態を更新
+            break;
+
+        case 'PATCH_REVERTED':
+            // Consoleでパッチがリバートされた通知
+            console.log('Patch reverted on Console:', event.patchId);
+            break;
+
+        case 'AGENT_EXECUTED':
+            // エージェント実行通知
+            console.log(`Agent ${event.agentName} executed`);
+            break;
+
+        case 'PROPOSAL_GENERATED':
+            // 提案生成通知
+            console.log('Proposal generated:', event.proposal);
+            break;
+
+        default:
+            console.log('Unknown event type:', event);
+    }
+}
+
+/**
+ * パッチをConsoleに送信
+ */
+export function sendPatch(patch: SpecPatch) {
+    return send({
+        type: 'PATCH_CREATED',
+        patch
+    });
+}
+
+/**
+ * Spec更新をConsoleに送信
+ */
+export function sendSpecUpdate(agents: AgentSpec[]) {
+    return send({
+        type: 'SPEC_UPDATED',
+        agents
+    });
+}
+</file>
+
+<file path="src/lib/stores/artifact-store.ts">
+/**
+ * Artifact Store
+ *
+ * AI生成物を管理するストア
+ */
+import { writable, derived } from 'svelte/store';
+import type { Artifact, ArtifactType } from '$lib/types';
+
+// 全ての生成物
+export const artifacts = writable<Artifact[]>([]);
+
+// 生成物が存在するかどうか
+export const hasArtifacts = derived(artifacts, ($artifacts) => $artifacts.length > 0);
+
+// 種類別の生成物数
+export const artifactCounts = derived(artifacts, ($artifacts) => {
+    const counts: Record<ArtifactType, number> = {
+        'ui-mock': 0,
+        'api-spec': 0,
+        'test-case': 0,
+        'use-case': 0
+    };
+    $artifacts.forEach((a) => {
+        counts[a.type]++;
+    });
+    return counts;
+});
+
+// 最新の生成物
+export const latestArtifacts = derived(artifacts, ($artifacts) =>
+    [...$artifacts].sort((a, b) => new Date(b.generatedAt).getTime() - new Date(a.generatedAt).getTime()).slice(0, 5)
+);
+
+/**
+ * 生成物を追加
+ */
+export function addArtifact(artifact: Artifact) {
+    artifacts.update((current) => [...current, artifact]);
+}
+
+/**
+ * 生成物を削除
+ */
+export function removeArtifact(id: string) {
+    artifacts.update((current) => current.filter((a) => a.id !== id));
+}
+
+/**
+ * 全ての生成物をクリア
+ */
+export function clearArtifacts() {
+    artifacts.set([]);
+}
+
+/**
+ * 種類でフィルタリング
+ */
+export function getArtifactsByType(type: ArtifactType): Artifact[] {
+    let result: Artifact[] = [];
+    artifacts.subscribe((a) => {
+        result = a.filter((artifact) => artifact.type === type);
+    })();
+    return result;
+}
+</file>
+
+<file path="src/lib/stores/history-store.ts">
+import { writable, derived, get } from 'svelte/store';
+import type { SpecPatch, AgentSpec } from '$lib/types';
+import { saveToStorage, loadFromStorage } from '$lib/utils/storage-utils';
+import { generateSpecPatch, applySpecPatch, revertSpecPatch, isPatchEmpty } from '$lib/utils/diff-utils';
+
+const STORAGE_KEY = 'spec-flow-studio:history';
+
+interface HistoryState {
+    patches: SpecPatch[];
+    currentIndex: number; // 現在適用されているパッチのインデックス (-1 = 初期状態)
+    baseSpecs: AgentSpec[]; // 履歴の起点となるSpecs
+}
+
+const DEFAULT_STATE: HistoryState = {
+    patches: [],
+    currentIndex: -1,
+    baseSpecs: []
+};
+
+function createHistoryStore() {
+    const stored = loadFromStorage<HistoryState>(STORAGE_KEY, DEFAULT_STATE);
+    const { subscribe, set, update } = writable<HistoryState>(stored);
+
+    // 状態が変更されるたびに永続化
+    subscribe((state) => {
+        saveToStorage(STORAGE_KEY, state);
+    });
+
+    return {
+        subscribe,
+
+        /**
+         * 履歴の初期化（エディタ初回ロード時に呼ぶ）
+         */
+        initialize: (specs: AgentSpec[]) => {
+            update((state) => {
+                if (state.patches.length === 0) {
+                    return { ...state, baseSpecs: specs };
+                }
+                return state;
+            });
+        },
+
+        /**
+         * 新しいパッチを記録
+         */
+        commit: (beforeSpecs: AgentSpec[], afterSpecs: AgentSpec[], name?: string): SpecPatch | null => {
+            const patch = generateSpecPatch(beforeSpecs, afterSpecs, { name, author: 'human' });
+
+            if (isPatchEmpty(patch)) {
+                return null; // 変更なし
+            }
+
+            update((state) => {
+                // 現在位置より後のパッチを破棄（ブランチを切らない）
+                const newPatches = state.patches.slice(0, state.currentIndex + 1);
+                newPatches.push(patch);
+
+                return {
+                    ...state,
+                    patches: newPatches,
+                    currentIndex: newPatches.length - 1
+                };
+            });
+
+            return patch;
+        },
+
+        /**
+         * Undo: 1つ前の状態に戻る
+         */
+        undo: (): AgentSpec[] | null => {
+            const state = get({ subscribe });
+            if (state.currentIndex < 0) return null; // これ以上戻れない
+
+            const targetIndex = state.currentIndex - 1;
+            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex);
+
+            update((s) => ({ ...s, currentIndex: targetIndex }));
+            return specs;
+        },
+
+        /**
+         * Redo: 1つ先の状態に進む
+         */
+        redo: (): AgentSpec[] | null => {
+            const state = get({ subscribe });
+            if (state.currentIndex >= state.patches.length - 1) return null; // これ以上進めない
+
+            const targetIndex = state.currentIndex + 1;
+            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex);
+
+            update((s) => ({ ...s, currentIndex: targetIndex }));
+            return specs;
+        },
+
+        /**
+         * 特定のパッチまで巻き戻す
+         */
+        revertTo: (patchId: string): AgentSpec[] | null => {
+            const state = get({ subscribe });
+            const targetIndex = state.patches.findIndex((p) => p.metadata.id === patchId);
+            if (targetIndex === -1) return null;
+
+            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex);
+            update((s) => ({ ...s, currentIndex: targetIndex }));
+            return specs;
+        },
+
+        /**
+         * 現在の状態を取得
+         */
+        getCurrentSpecs: (): AgentSpec[] => {
+            const state = get({ subscribe });
+            return rebuildSpecs(state.baseSpecs, state.patches, state.currentIndex);
+        },
+
+        /**
+         * 履歴をクリア
+         */
+        clear: () => {
+            set(DEFAULT_STATE);
+        }
+    };
+}
+
+/**
+ * baseSpecsにパッチを順番に適用してtargetIndexまでの状態を再構築
+ */
+function rebuildSpecs(baseSpecs: AgentSpec[], patches: SpecPatch[], targetIndex: number): AgentSpec[] {
+    let specs = [...baseSpecs];
+    for (let i = 0; i <= targetIndex && i < patches.length; i++) {
+        specs = applySpecPatch(specs, patches[i]);
+    }
+    return specs;
+}
+
+export const historyStore = createHistoryStore();
+
+// 派生ストア: Undo可能かどうか
+export const canUndo = derived(historyStore, ($history) => $history.currentIndex >= 0);
+
+// 派生ストア: Redo可能かどうか
+export const canRedo = derived(
+    historyStore,
+    ($history) => $history.currentIndex < $history.patches.length - 1
+);
+
+// 派生ストア: パッチ一覧
+export const patches = derived(historyStore, ($history) => $history.patches);
+
+// 派生ストア: 現在のインデックス
+export const currentPatchIndex = derived(historyStore, ($history) => $history.currentIndex);
+</file>
+
+<file path="src/lib/stores/integration-store.ts">
+/**
+ * Integration Store
+ *
+ * Aether Consoleとの連携状態を管理するストア
+ */
+import { writable, derived } from 'svelte/store';
+import type { ConnectionStatus, IntegrationConfig, SpecPatch } from '$lib/types';
+import { DEFAULT_INTEGRATION_CONFIG } from '$lib/types';
+
+// 接続状態
+export const connectionStatus = writable<ConnectionStatus>('disconnected');
+
+// 連携設定
+export const integrationConfig = writable<IntegrationConfig>(DEFAULT_INTEGRATION_CONFIG);
+
+// パッチ履歴
+export const patches = writable<SpecPatch[]>([]);
+
+// 接続中かどうか
+export const isConnected = derived(connectionStatus, ($status) => $status === 'connected');
+
+// 接続中（試行中）かどうか
+export const isConnecting = derived(connectionStatus, ($status) => $status === 'connecting');
+
+// エラー状態かどうか
+export const hasError = derived(connectionStatus, ($status) => $status === 'error');
+
+// パッチ数
+export const patchCount = derived(patches, ($patches) => $patches.length);
+
+// 適用済みパッチ
+export const appliedPatches = derived(patches, ($patches) =>
+    $patches.filter((p) => p.spec.appliedAt !== undefined)
+);
+
+/**
+ * 接続状態を更新
+ */
+export function setConnectionStatus(status: ConnectionStatus) {
+    connectionStatus.set(status);
+}
+
+/**
+ * 設定を更新
+ */
+export function updateConfig(updates: Partial<IntegrationConfig>) {
+    integrationConfig.update((current) => ({ ...current, ...updates }));
+}
+
+/**
+ * パッチを追加
+ */
+export function addPatch(patch: SpecPatch) {
+    patches.update((current) => [...current, patch]);
+}
+
+/**
+ * パッチを適用済みにする
+ */
+export function applyPatch(patchId: string) {
+    patches.update((current) =>
+        current.map((p) =>
+            p.metadata.id === patchId
+                ? { ...p, spec: { ...p.spec, appliedAt: new Date().toISOString() } }
+                : p
+        )
+    );
+}
+
+/**
+ * パッチを削除
+ */
+export function removePatch(patchId: string) {
+    patches.update((current) => current.filter((p) => p.metadata.id !== patchId));
+}
+
+/**
+ * 全てのパッチをクリア
+ */
+export function clearPatches() {
+    patches.set([]);
+}
+</file>
+
+<file path="src/lib/stores/session-store.ts">
+import { writable } from 'svelte/store';
+
+interface SessionState {
+    encryptionPassword: string | null;
+}
+
+const initialState: SessionState = {
+    encryptionPassword: null
+};
+
+function createSessionStore() {
+    const { subscribe, set, update } = writable<SessionState>(initialState);
+
+    return {
+        subscribe,
+        setPassword: (password: string) => update((s) => ({ ...s, encryptionPassword: password })),
+        clearPassword: () => update((s) => ({ ...s, encryptionPassword: null })),
+        reset: () => set(initialState)
+    };
+}
+
+export const session = createSessionStore();
+</file>
+
+<file path="src/lib/stores/settings-store.ts">
+import { writable } from 'svelte/store';
+import { saveToStorage, loadFromStorage, STORAGE_KEYS } from '$lib/utils/storage-utils';
+
+export interface Settings {
+    // Gemini API
+    geminiModel: string;
+    hasApiKey: boolean;
+    availableModels: string[]; // 利用可能なモデル名のリスト
+}
+
+const DEFAULT_SETTINGS: Settings = {
+    geminiModel: 'gemini-2.0-flash-exp', // デフォルトフォールバック
+    hasApiKey: false,
+    availableModels: [
+        'gemini-2.0-flash-exp',
+        'gemini-1.5-pro',
+        'gemini-1.5-flash',
+        'gemini-1.0-pro'
+    ] // 初期フォールバックリスト
+};
+
+function createSettingsStore() {
+    const stored = loadFromStorage<Settings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
+
+    // 以前のバージョンとの互換性確保（availableModelsがない場合など）
+    const initialValue = {
+        ...DEFAULT_SETTINGS,
+        ...stored,
+        availableModels: stored.availableModels?.length > 0 ? stored.availableModels : DEFAULT_SETTINGS.availableModels
+    };
+
+    const { subscribe, set, update } = writable<Settings>(initialValue);
+
+    return {
+        subscribe,
+        updateSettings: (newSettings: Partial<Settings>) => {
+            update(current => {
+                const updated = { ...current, ...newSettings };
+                saveToStorage(STORAGE_KEYS.SETTINGS, updated);
+                return updated;
+            });
+        },
+        reset: () => {
+            set(DEFAULT_SETTINGS);
+            saveToStorage(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
+        }
+    };
+}
+
+export const settings = createSettingsStore();
+</file>
+
+<file path="src/lib/stores/spec-store.ts">
+/**
+ * Spec Store
+ *
+ * 現在編集中のSpec-Kit仕様を管理するストア
+ */
+import { writable, derived } from 'svelte/store';
+import type { AgentSpec } from '$lib/types';
+
+// 現在のSpec一覧
+export const specs = writable<AgentSpec[]>([]);
+
+// 現在のSpec名（ファイル名など）
+export const currentSpecName = writable<string | null>(null);
+
+// Specが存在するかどうか
+export const hasSpec = derived(specs, ($specs) => $specs.length > 0);
+
+// Spec数
+export const specCount = derived(specs, ($specs) => $specs.length);
+
+/**
+ * Specを設定
+ */
+export function setSpecs(newSpecs: AgentSpec[], name?: string) {
+    specs.set(newSpecs);
+    if (name) {
+        currentSpecName.set(name);
+    }
+}
+
+/**
+ * Specをクリア
+ */
+export function clearSpecs() {
+    specs.set([]);
+    currentSpecName.set(null);
+}
+
+/**
+ * 単一のエージェントを追加
+ */
+export function addAgent(agent: AgentSpec) {
+    specs.update((current) => [...current, agent]);
+}
+
+/**
+ * エージェントを更新
+ */
+export function updateAgent(name: string, updates: Partial<AgentSpec>) {
+    specs.update((current) =>
+        current.map((agent) => (agent.name === name ? { ...agent, ...updates } : agent))
+    );
+}
+
+/**
+ * エージェントを削除
+ */
+export function removeAgent(name: string) {
+    specs.update((current) => current.filter((agent) => agent.name !== name));
+}
+</file>
+
+<file path="src/lib/types/index.ts">
+/**
+ * Spec-Flow Studio Type Definitions
+ *
+ * Aether ConsoleとSpec-Flow Studioの連携用インターフェース定義
+ * および Spec-Flow Studio 固有の型定義
+ */
+
+// ========================================
+// Spec-Kit形式（共通データモデル）
+// ========================================
+
+/**
+ * エージェント仕様
+ */
+export interface AgentSpec {
+    name: string;
+    displayName: string;
+    role: string;
+    capabilities: string[];
+    constraints: string[];
+    communication: {
+        canSendTo: string[];
+        canReceiveFrom: string[];
+    };
+}
+
+/**
+ * Spec差分（仕様変更）
+ */
+export interface SpecDiff {
+    id: string;
+    agentName: string;
+    operation: 'add' | 'remove' | 'modify';
+    path: string;
+    before?: unknown;
+    after?: unknown;
+    impact: 'low' | 'medium' | 'high';
+}
+
+/**
+ * パッチ（差分の集合）- ハイブリッド形式
+ */
+export interface SpecPatch {
+    kind: 'SpecPatch';
+    version: 'v1';
+    metadata: {
+        id: string;
+        name: string;
+        createdAt: string; // ISO8601
+        author: 'human' | 'ai' | 'system';
+    };
+    spec: {
+        diffs: SpecDiff[];
+        summary: string;
+        rationale?: string;
+        appliedAt?: string; // ISO8601
+    };
+}
+
+// ========================================
+// 連携イベント
+// ========================================
+
+/**
+ * エージェント実行結果の概要
+ */
+export interface AgentResultSummary {
+    agentName: string;
+    displayName: string;
+    status: 'completed' | 'error';
+    responseSummary: string;
+}
+
+/**
+ * シナリオの概要
+ */
+export interface ScenarioSummary {
+    id: string;
+    name: string;
+    description: string;
+    messageCount: number;
+}
+
+/**
+ * Aether Console → Spec-Flow Studio
+ * コンソールからスタジオへ送信するイベント
+ */
+export type ConsoleToStudioEvent =
+    | { type: 'PATCH_APPLIED'; patch: SpecPatch }
+    | { type: 'PATCH_REVERTED'; patchId: string }
+    | { type: 'AGENT_EXECUTED'; agentName: string; input: string; output: string }
+    | { type: 'PROPOSAL_GENERATED'; proposal: string; agentResults: AgentResultSummary[] }
+    | { type: 'SYNC_REQUEST' };
+
+/**
+ * Spec-Flow Studio → Aether Console
+ * スタジオからコンソールへ送信するイベント
+ */
+export type StudioToConsoleEvent =
+    | { type: 'SPEC_UPDATED'; agents: AgentSpec[] }
+    | { type: 'PATCH_CREATED'; patch: SpecPatch }
+    | { type: 'SCENARIO_CREATED'; scenario: ScenarioSummary }
+    | { type: 'SYNC_RESPONSE'; agents: AgentSpec[]; patches: SpecPatch[] };
+
+// ========================================
+// 連携設定
+// ========================================
+
+/**
+ * 連携接続設定
+ */
+export interface IntegrationConfig {
+    /** Aether ConsoleのWebSocket URL */
+    consoleUrl: string;
+    /** 自動同期を有効にするか */
+    autoSync: boolean;
+    /** 同期間隔（ミリ秒） */
+    syncInterval: number;
+}
+
+/**
+ * デフォルトの連携設定
+ */
+export const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
+    consoleUrl: 'ws://localhost:5173/api/ws',
+    autoSync: false,
+    syncInterval: 5000
+};
+
+// ========================================
+// 生成物（Artifacts）
+// ========================================
+
+/**
+ * 生成物の種類
+ */
+export type ArtifactType = 'ui-mock' | 'api-spec' | 'test-case' | 'use-case-diagram';
+
+/**
+ * 生成物
+ */
+export interface Artifact {
+    id: string;
+    type: ArtifactType;
+    name: string;
+    content: string;
+    generatedAt: string; // ISO8601
+    sourceSpec: string; // 生成元のSpec名
+    rationale?: string; // AIの生成理由
+}
+
+// ========================================
+// アプリケーション状態
+// ========================================
+
+/**
+ * 接続状態
+ */
+export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
+
+/**
+ * アプリケーション全体の状態
+ */
+export interface AppState {
+    currentSpec: AgentSpec[] | null;
+    currentSpecName: string | null;
+    artifacts: Artifact[];
+    patches: SpecPatch[];
+    connectionStatus: ConnectionStatus;
+}
+</file>
+
+<file path="src/lib/utils/crypto-utils.ts">
+/**
+ * Crypto Utils
+ *
+ * Web Crypto API を使用したAES-GCM暗号化ユーティリティ
+ */
+
+const ALGORITHM = 'AES-GCM';
+const KEY_LENGTH = 256;
+const SALT_LENGTH = 16;
+const IV_LENGTH = 12;
+const ITERATIONS = 100000;
+
+/**
+ * パスワードから暗号化キーを生成（PBKDF2）
+ */
+async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+    const enc = new TextEncoder();
+    const keyMaterial = await window.crypto.subtle.importKey(
+        'raw',
+        enc.encode(password),
+        'PBKDF2',
+        false,
+        ['deriveKey']
+    );
+
+    return window.crypto.subtle.deriveKey(
+        {
+            name: 'PBKDF2',
+            salt,
+            iterations: ITERATIONS,
+            hash: 'SHA-256'
+        },
+        keyMaterial,
+        { name: ALGORITHM, length: KEY_LENGTH },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+/**
+ * データを暗号化
+ * @returns {salt, iv, data} Base64エンコードされた文字列
+ */
+export async function encryptData(text: string, password: string): Promise<string> {
+    const salt = window.crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+    const iv = window.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+    const key = await deriveKey(password, salt);
+    const enc = new TextEncoder();
+
+    const encrypted = await window.crypto.subtle.encrypt(
+        { name: ALGORITHM, iv },
+        key,
+        enc.encode(text)
+    );
+
+    // salt + iv + encrypted data を結合してBase64化
+    const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+    combined.set(salt, 0);
+    combined.set(iv, salt.length);
+    combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+
+    return btoa(String.fromCharCode(...combined));
+}
+
+/**
+ * データを復号化
+ */
+export async function decryptData(encryptedBase64: string, password: string): Promise<string> {
+    try {
+        const combined = new Uint8Array(
+            atob(encryptedBase64)
+                .split('')
+                .map((c) => c.charCodeAt(0))
+        );
+
+        const salt = combined.slice(0, SALT_LENGTH);
+        const iv = combined.slice(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
+        const data = combined.slice(SALT_LENGTH + IV_LENGTH);
+
+        const key = await deriveKey(password, salt);
+
+        const decrypted = await window.crypto.subtle.decrypt(
+            { name: ALGORITHM, iv },
+            key,
+            data
+        );
+
+        return new TextDecoder().decode(decrypted);
+    } catch (error) {
+        console.error('Decryption failed:', error);
+        throw new Error('パスワードが間違っているか、データが破損しています');
+    }
+}
+
+/**
+ * APIキーが設定されているか確認するためのハッシュ生成
+ */
+export async function hashKey(text: string): Promise<string> {
+    const enc = new TextEncoder();
+    const hash = await window.crypto.subtle.digest('SHA-256', enc.encode(text));
+    return btoa(String.fromCharCode(...new Uint8Array(hash)));
+}
+</file>
+
+<file path="src/lib/utils/diff-utils.ts">
+/**
+ * Diff Utils
+ *
+ * Spec-Kitの差分検出とパッチ生成・適用ロジック
+ */
+import type { AgentSpec, SpecDiff, SpecPatch } from '$lib/types';
+
+/**
+ * 2つのAgentSpec配列を比較し、差分を検出してSpecPatchを生成
+ */
+export function generateSpecPatch(
+    before: AgentSpec[],
+    after: AgentSpec[],
+    options?: { name?: string; author?: 'human' | 'ai' | 'system' }
+): SpecPatch {
+    const diffs: SpecDiff[] = [];
+    const beforeMap = new Map(before.map((s) => [s.name, s]));
+    const afterMap = new Map(after.map((s) => [s.name, s]));
+
+    // 削除されたエージェント
+    for (const [name, spec] of beforeMap) {
+        if (!afterMap.has(name)) {
+            diffs.push({
+                id: `diff-${crypto.randomUUID().slice(0, 8)}`,
+                agentName: name,
+                operation: 'remove',
+                path: 'agent',
+                before: spec,
+                after: undefined,
+                impact: 'high'
+            });
+        }
+    }
+
+    // 追加されたエージェント
+    for (const [name, spec] of afterMap) {
+        if (!beforeMap.has(name)) {
+            diffs.push({
+                id: `diff-${crypto.randomUUID().slice(0, 8)}`,
+                agentName: name,
+                operation: 'add',
+                path: 'agent',
+                before: undefined,
+                after: spec,
+                impact: 'high'
+            });
+        }
+    }
+
+    // 変更されたエージェント
+    for (const [name, afterSpec] of afterMap) {
+        const beforeSpec = beforeMap.get(name);
+        if (beforeSpec) {
+            const fieldDiffs = detectFieldChanges(name, beforeSpec, afterSpec);
+            diffs.push(...fieldDiffs);
+        }
+    }
+
+    // 自然言語サマリーの生成
+    const summary = generateSummary(diffs);
+
+    return {
+        kind: 'SpecPatch',
+        version: 'v1',
+        metadata: {
+            id: `patch-${crypto.randomUUID().slice(0, 8)}`,
+            name: options?.name || summary.slice(0, 50),
+            createdAt: new Date().toISOString(),
+            author: options?.author || 'human'
+        },
+        spec: {
+            diffs,
+            summary
+        }
+    };
+}
+
+/**
+ * エージェント内のフィールド変更を検出
+ */
+function detectFieldChanges(agentName: string, before: AgentSpec, after: AgentSpec): SpecDiff[] {
+    const diffs: SpecDiff[] = [];
+
+    // role
+    if (before.role !== after.role) {
+        diffs.push(createDiff(agentName, 'spec.role', before.role, after.role, 'medium'));
+    }
+
+    // displayName
+    if (before.displayName !== after.displayName) {
+        diffs.push(createDiff(agentName, 'spec.displayName', before.displayName, after.displayName, 'low'));
+    }
+
+    // constraints (配列比較)
+    const constraintDiffs = detectArrayChanges(
+        agentName,
+        'spec.constraints',
+        before.constraints,
+        after.constraints,
+        'medium' // 制約変更は中程度の影響
+    );
+    diffs.push(...constraintDiffs);
+
+    // capabilities (配列比較)
+    const capabilityDiffs = detectArrayChanges(
+        agentName,
+        'spec.capabilities',
+        before.capabilities,
+        after.capabilities,
+        'low'
+    );
+    diffs.push(...capabilityDiffs);
+
+    // communication.canSendTo
+    const sendToDiffs = detectArrayChanges(
+        agentName,
+        'spec.communication.canSendTo',
+        before.communication.canSendTo,
+        after.communication.canSendTo,
+        'medium'
+    );
+    diffs.push(...sendToDiffs);
+
+    // communication.canReceiveFrom
+    const receiveFromDiffs = detectArrayChanges(
+        agentName,
+        'spec.communication.canReceiveFrom',
+        before.communication.canReceiveFrom,
+        after.communication.canReceiveFrom,
+        'medium'
+    );
+    diffs.push(...receiveFromDiffs);
+
+    return diffs;
+}
+
+/**
+ * 配列の変更を検出
+ */
+function detectArrayChanges(
+    agentName: string,
+    basePath: string,
+    before: string[],
+    after: string[],
+    defaultImpact: 'low' | 'medium' | 'high'
+): SpecDiff[] {
+    const diffs: SpecDiff[] = [];
+    const beforeSet = new Set(before);
+    const afterSet = new Set(after);
+
+    // 削除された要素
+    for (const item of before) {
+        if (!afterSet.has(item)) {
+            diffs.push(createDiff(agentName, `${basePath}[]`, item, undefined, defaultImpact, 'remove'));
+        }
+    }
+
+    // 追加された要素
+    for (const item of after) {
+        if (!beforeSet.has(item)) {
+            diffs.push(createDiff(agentName, `${basePath}[]`, undefined, item, defaultImpact, 'add'));
+        }
+    }
+
+    return diffs;
+}
+
+/**
+ * SpecDiffオブジェクトを作成
+ */
+function createDiff(
+    agentName: string,
+    path: string,
+    before: unknown,
+    after: unknown,
+    impact: 'low' | 'medium' | 'high',
+    operation?: 'add' | 'remove' | 'modify'
+): SpecDiff {
+    let op: 'add' | 'remove' | 'modify' = operation || 'modify';
+    if (!operation) {
+        if (before === undefined) op = 'add';
+        else if (after === undefined) op = 'remove';
+        else op = 'modify';
+    }
+
+    return {
+        id: `diff-${crypto.randomUUID().slice(0, 8)}`,
+        agentName,
+        operation: op,
+        path,
+        before,
+        after,
+        impact
+    };
+}
+
+/**
+ * 差分から自然言語サマリーを生成
+ */
+function generateSummary(diffs: SpecDiff[]): string {
+    if (diffs.length === 0) return '変更なし';
+
+    const parts: string[] = [];
+    const agentAdded = diffs.filter((d) => d.path === 'agent' && d.operation === 'add');
+    const agentRemoved = diffs.filter((d) => d.path === 'agent' && d.operation === 'remove');
+    const fieldChanges = diffs.filter((d) => d.path !== 'agent');
+
+    if (agentAdded.length > 0) {
+        parts.push(`${agentAdded.map((d) => d.agentName).join(', ')} を追加`);
+    }
+    if (agentRemoved.length > 0) {
+        parts.push(`${agentRemoved.map((d) => d.agentName).join(', ')} を削除`);
+    }
+    if (fieldChanges.length > 0) {
+        const agents = [...new Set(fieldChanges.map((d) => d.agentName))];
+        parts.push(`${agents.join(', ')} のフィールドを ${fieldChanges.length} 件変更`);
+    }
+
+    return parts.join(' / ');
+}
+
+/**
+ * パッチを適用してAgentSpec配列を更新
+ */
+export function applySpecPatch(specs: AgentSpec[], patch: SpecPatch): AgentSpec[] {
+    let result = [...specs];
+
+    for (const diff of patch.spec.diffs) {
+        if (diff.path === 'agent') {
+            // エージェント全体の追加/削除
+            if (diff.operation === 'add' && diff.after) {
+                result.push(diff.after as AgentSpec);
+            } else if (diff.operation === 'remove') {
+                result = result.filter((s) => s.name !== diff.agentName);
+            }
+        } else {
+            // フィールドレベルの変更
+            result = result.map((spec) => {
+                if (spec.name !== diff.agentName) return spec;
+                return applyFieldDiff(spec, diff);
+            });
+        }
+    }
+
+    return result;
+}
+
+/**
+ * フィールドレベルの差分を適用
+ */
+function applyFieldDiff(spec: AgentSpec, diff: SpecDiff): AgentSpec {
+    const updated = { ...spec };
+
+    // パスに基づいて適用
+    if (diff.path === 'spec.role') {
+        updated.role = diff.after as string;
+    } else if (diff.path === 'spec.displayName') {
+        updated.displayName = diff.after as string;
+    } else if (diff.path === 'spec.constraints[]') {
+        updated.constraints = applyArrayDiff(updated.constraints, diff);
+    } else if (diff.path === 'spec.capabilities[]') {
+        updated.capabilities = applyArrayDiff(updated.capabilities, diff);
+    } else if (diff.path === 'spec.communication.canSendTo[]') {
+        updated.communication = {
+            ...updated.communication,
+            canSendTo: applyArrayDiff(updated.communication.canSendTo, diff)
+        };
+    } else if (diff.path === 'spec.communication.canReceiveFrom[]') {
+        updated.communication = {
+            ...updated.communication,
+            canReceiveFrom: applyArrayDiff(updated.communication.canReceiveFrom, diff)
+        };
+    }
+
+    return updated;
+}
+
+/**
+ * 配列への差分適用
+ */
+function applyArrayDiff(arr: string[], diff: SpecDiff): string[] {
+    if (diff.operation === 'add' && diff.after) {
+        return [...arr, diff.after as string];
+    } else if (diff.operation === 'remove' && diff.before) {
+        return arr.filter((item) => item !== diff.before);
+    }
+    return arr;
+}
+
+/**
+ * パッチを逆適用（ロールバック用）
+ */
+export function revertSpecPatch(specs: AgentSpec[], patch: SpecPatch): AgentSpec[] {
+    // 逆順で、操作を反転して適用
+    const reversedDiffs = [...patch.spec.diffs].reverse().map((diff) => ({
+        ...diff,
+        operation: reverseOperation(diff.operation),
+        before: diff.after,
+        after: diff.before
+    }));
+
+    const reversedPatch: SpecPatch = {
+        ...patch,
+        spec: {
+            ...patch.spec,
+            diffs: reversedDiffs
+        }
+    };
+
+    return applySpecPatch(specs, reversedPatch);
+}
+
+function reverseOperation(op: 'add' | 'remove' | 'modify'): 'add' | 'remove' | 'modify' {
+    if (op === 'add') return 'remove';
+    if (op === 'remove') return 'add';
+    return 'modify';
+}
+
+/**
+ * パッチが空（変更なし）かどうかを確認
+ */
+export function isPatchEmpty(patch: SpecPatch): boolean {
+    return patch.spec.diffs.length === 0;
+}
+</file>
+
+<file path="src/lib/utils/prompt-utils.ts">
+/**
+ * Prompt Utils
+ * 
+ * Spec-Kitから各種アーティファクトを生成するためのプロンプトテンプレート
+ */
+import type { AgentSpec } from '$lib/types';
+import { stringifyYaml } from '$lib/utils/yaml-utils';
+
+/**
+ * UI Mock生成用プロンプト
+ */
+export function buildUiPrompt(spec: AgentSpec): string {
+    return `Generate a high-quality, modern UI mockup in a single HTML file using Tailwind CSS based on the following agent specification.
+
+# Agent Specification
+Role: ${spec.role}
+Constraints:
+${spec.constraints.map(c => `- ${c}`).join('\n')}
+
+# Requirements for the Output
+1. **Single HTML File**: Return ONLY the HTML code. Do not wrap it in markdown block.
+2. **Tailwind CSS**: Use CDN <script src="https://cdn.tailwindcss.com"></script>.
+3. **Design**: Modern, clean, and responsive design. Use Lucide Icons or similar via CDN if needed.
+4. **Content**: The UI should reflect the agent's role and capabilities. Include form inputs if inputs are specified (or inferred from role).
+5. **No Explanations**: Output pure HTML code only.
+
+# Capability Context
+${spec.capabilities.join(', ')}
+`;
+}
+
+/**
+ * API Spec (OpenAPI) 生成用プロンプト
+ */
+export function buildApiPrompt(spec: AgentSpec): string {
+    return `Generate an OpenAPI 3.0 (YAML) specification based on the following agent specification.
+
+# Agent Specification
+Name: ${spec.name}
+Role: ${spec.role}
+Inputs: (Inferred from role)
+Outputs: (Inferred from role)
+
+# Requirements for the Output
+1. **YAML Only**: Return ONLY the YAML code. Do not wrap it in markdown block.
+2. **OpenAPI 3.0**: Use standard OpenAPI 3.0 format.
+3. **Paths**: Define endpoints that correspond to the agent's capabilities.
+4. **Schemas**: Define request/response schemas based on the inputs/outputs.
+5. **No Explanations**: Output pure YAML code only.
+
+# Input YAML
+${stringifyYaml(spec)}
+`;
+}
+
+/**
+ * テストケース生成用プロンプト
+ */
+export function buildTestCasePrompt(spec: AgentSpec): string {
+    return `Generate comprehensive test cases for the following AI agent specification.
+
+# Agent Specification
+Name: ${spec.name}
+Display Name: ${spec.displayName}
+Role: ${spec.role}
+Capabilities: ${spec.capabilities.join(', ')}
+Constraints: ${spec.constraints.join(', ')}
+
+# Requirements for the Output
+1. **Markdown Format**: Return test cases in Markdown format with tables.
+2. **Categories**: Include positive tests, negative tests, edge cases, and constraint validation tests.
+3. **Structure**: Each test case should have: ID, Category, Description, Input, Expected Output, Priority.
+4. **Constraint Tests**: Specifically test that each constraint is enforced.
+5. **No Explanations**: Start directly with the test case table.
+
+# Example Format
+| ID | Category | Description | Input | Expected Output | Priority |
+|----|----------|-------------|-------|-----------------|----------|
+| TC-001 | Positive | ... | ... | ... | High |
+`;
+}
+
+/**
+ * ユースケース図(Mermaid)生成用プロンプト
+ */
+export function buildUseCasePrompt(specs: AgentSpec[]): string {
+    const agentList = specs.map(s => `- ${s.displayName}: ${s.role}`).join('\n');
+
+    return `Generate a Mermaid use case diagram based on the following multi-agent system specification.
+
+# Agents
+${agentList}
+
+# Communication
+${specs.map(s => `${s.name} can send to: ${s.communication.canSendTo.join(', ') || 'none'}`).join('\n')}
+
+# Requirements for the Output
+1. **Mermaid Only**: Return ONLY the Mermaid diagram code. Do not wrap it in markdown code block.
+2. **Use Case Diagram**: Use Mermaid's flowchart syntax to represent actors and use cases.
+3. **Show Relationships**: Show which agents interact with which use cases.
+4. **Clean Layout**: Use subgraphs to group related elements.
+5. **No Explanations**: Output pure Mermaid code only.
+
+Start with: graph TB
+`;
+}
+
+/**
+ * エージェント間通信図(Mermaid)生成
+ * ※ これはAI生成ではなく、Specから直接生成
+ */
+export function buildCommunicationDiagram(specs: AgentSpec[]): string {
+    if (specs.length === 0) return 'graph LR\n  NoAgents[No agents defined]';
+
+    const lines: string[] = ['graph LR'];
+
+    // ノード定義
+    specs.forEach(spec => {
+        const icon = spec.role.includes('解析') || spec.displayName.includes('Analyzer') ? '🔍' : '🤖';
+        lines.push(`  ${spec.name}["${icon} ${spec.displayName}"]`);
+    });
+
+    // 通信関係
+    const validNames = new Set(specs.map(s => s.name));
+    specs.forEach(spec => {
+        spec.communication.canSendTo.forEach(target => {
+            if (validNames.has(target)) {
+                lines.push(`  ${spec.name} --> ${target}`);
+            }
+        });
+    });
+
+    return lines.join('\n');
+}
+</file>
+
+<file path="src/lib/utils/storage-utils.ts">
+/**
+ * Local Storage Utilities
+ *
+ * Spec、設定などのローカル保存用ユーティリティ
+ */
+
+const STORAGE_KEYS = {
+    SPECS: 'spec-flow-studio:specs',
+    SPEC_NAME: 'spec-flow-studio:spec-name',
+    ARTIFACTS: 'spec-flow-studio:artifacts',
+    PATCHES: 'spec-flow-studio:patches',
+    SETTINGS: 'spec-flow-studio:settings'
+} as const;
+
+/**
+ * ローカルストレージに保存
+ */
+export function saveToStorage<T>(key: string, data: T): void {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+        console.error('Failed to save to localStorage:', error);
+    }
+}
+
+/**
+ * ローカルストレージから読み込み
+ */
+export function loadFromStorage<T>(key: string, defaultValue: T): T {
+    try {
+        const item = localStorage.getItem(key);
+        if (item === null) {
+            return defaultValue;
+        }
+        return JSON.parse(item) as T;
+    } catch (error) {
+        console.error('Failed to load from localStorage:', error);
+        return defaultValue;
+    }
+}
+
+/**
+ * ローカルストレージから削除
+ */
+export function removeFromStorage(key: string): void {
+    try {
+        localStorage.removeItem(key);
+    } catch (error) {
+        console.error('Failed to remove from localStorage:', error);
+    }
+}
+
+/**
+ * Spec YAMLを保存
+ */
+export function saveSpecYaml(yaml: string, name?: string): void {
+    saveToStorage(STORAGE_KEYS.SPECS, yaml);
+    if (name) {
+        saveToStorage(STORAGE_KEYS.SPEC_NAME, name);
+    }
+}
+
+/**
+ * Spec YAMLを読み込み
+ */
+export function loadSpecYaml(): { yaml: string; name: string | null } {
+    return {
+        yaml: loadFromStorage(STORAGE_KEYS.SPECS, ''),
+        name: loadFromStorage<string | null>(STORAGE_KEYS.SPEC_NAME, null)
+    };
+}
+
+/**
+ * 全データをエクスポート
+ */
+export function exportAllData(): string {
+    const data = {
+        specs: loadFromStorage(STORAGE_KEYS.SPECS, ''),
+        specName: loadFromStorage(STORAGE_KEYS.SPEC_NAME, null),
+        artifacts: loadFromStorage(STORAGE_KEYS.ARTIFACTS, []),
+        patches: loadFromStorage(STORAGE_KEYS.PATCHES, []),
+        settings: loadFromStorage(STORAGE_KEYS.SETTINGS, {}),
+        exportedAt: new Date().toISOString()
+    };
+    return JSON.stringify(data, null, 2);
+}
+
+/**
+ * データをインポート
+ */
+export function importAllData(jsonString: string): void {
+    try {
+        const data = JSON.parse(jsonString);
+        if (data.specs) saveToStorage(STORAGE_KEYS.SPECS, data.specs);
+        if (data.specName) saveToStorage(STORAGE_KEYS.SPEC_NAME, data.specName);
+        if (data.artifacts) saveToStorage(STORAGE_KEYS.ARTIFACTS, data.artifacts);
+        if (data.patches) saveToStorage(STORAGE_KEYS.PATCHES, data.patches);
+        if (data.settings) saveToStorage(STORAGE_KEYS.SETTINGS, data.settings);
+    } catch (error) {
+        console.error('Failed to import data:', error);
+        throw new Error('Invalid JSON format');
+    }
+}
+
+/**
+ * 全データを削除
+ */
+export function clearAllData(): void {
+    Object.values(STORAGE_KEYS).forEach((key) => {
+        removeFromStorage(key);
+    });
+}
+
+export { STORAGE_KEYS };
+</file>
+
+<file path="src/lib/utils/yaml-utils.ts">
+/**
+ * YAML Utilities
+ *
+ * Spec-Kit YAML のパース・シリアライズ用ユーティリティ
+ */
+import yaml from 'js-yaml';
+import type { AgentSpec } from '$lib/types';
+
+/**
+ * YAML文字列をAgentSpecの配列にパース
+ */
+export function parseSpecYaml(content: string): AgentSpec[] {
+    try {
+        const docs = yaml.loadAll(content) as Record<string, unknown>[];
+        return docs
+            .filter((doc) => doc && doc.kind === 'Agent')
+            .map((doc) => convertToAgentSpec(doc));
+    } catch (error) {
+        console.error('YAML parse error:', error);
+        throw new YamlParseError(error instanceof Error ? error.message : 'Unknown parse error');
+    }
+}
+
+/**
+ * 単一のYAMLドキュメントをパース
+ */
+export function parseYaml<T>(content: string): T {
+    try {
+        return yaml.load(content) as T;
+    } catch (error) {
+        console.error('YAML parse error:', error);
+        throw new YamlParseError(error instanceof Error ? error.message : 'Unknown parse error');
+    }
+}
+
+/**
+ * オブジェクトをYAML文字列にシリアライズ
+ */
+export function stringifyYaml(obj: unknown): string {
+    return yaml.dump(obj, {
+        indent: 2,
+        lineWidth: 120,
+        noRefs: true,
+        sortKeys: false
+    });
+}
+
+/**
+ * AgentSpec配列をYAML文字列にシリアライズ（複数ドキュメント）
+ */
+export function stringifySpecs(specs: AgentSpec[]): string {
+    return specs.map((spec) => stringifyYaml(convertFromAgentSpec(spec))).join('---\n');
+}
+
+/**
+ * YAMLドキュメントをAgentSpecに変換
+ */
+function convertToAgentSpec(doc: Record<string, unknown>): AgentSpec {
+    const metadata = doc.metadata as Record<string, unknown> || {};
+    const spec = doc.spec as Record<string, unknown> || {};
+    const communication = spec.communication as Record<string, string[]> || {};
+
+    return {
+        name: String(metadata.name || ''),
+        displayName: String(metadata.displayName || metadata.name || ''),
+        role: String(spec.role || ''),
+        capabilities: Array.isArray(spec.capabilities) ? spec.capabilities : [],
+        constraints: Array.isArray(spec.constraints) ? spec.constraints : [],
+        communication: {
+            canSendTo: Array.isArray(communication.canSendTo) ? communication.canSendTo : [],
+            canReceiveFrom: Array.isArray(communication.canReceiveFrom) ? communication.canReceiveFrom : []
+        }
+    };
+}
+
+/**
+ * AgentSpecをYAMLドキュメント形式に変換
+ */
+function convertFromAgentSpec(spec: AgentSpec): Record<string, unknown> {
+    return {
+        kind: 'Agent',
+        version: 'v1',
+        metadata: {
+            name: spec.name,
+            displayName: spec.displayName
+        },
+        spec: {
+            role: spec.role,
+            capabilities: spec.capabilities,
+            constraints: spec.constraints,
+            communication: spec.communication
+        }
+    };
+}
+
+/**
+ * YAMLパースエラー
+ */
+export class YamlParseError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'YamlParseError';
+    }
+}
+
+/**
+ * YAMLの構文エラー情報を取得
+ */
+export function getYamlErrors(content: string): YamlError[] {
+    const errors: YamlError[] = [];
+
+    try {
+        yaml.loadAll(content);
+    } catch (error) {
+        if (error instanceof yaml.YAMLException) {
+            errors.push({
+                line: error.mark?.line ?? 0,
+                column: error.mark?.column ?? 0,
+                message: error.reason || error.message
+            });
+        }
+    }
+
+    return errors;
+}
+
+export interface YamlError {
+    line: number;
+    column: number;
+    message: string;
+}
+
+/**
+ * デフォルトのエージェントテンプレート
+ */
+export const AGENT_TEMPLATE = `kind: Agent
+version: v1
+metadata:
+  name: new-agent
+  displayName: "New Agent"
+  description: "エージェントの説明"
+  icon: "🤖"
+
+spec:
+  role: |
+    このエージェントの役割を記述します。
+
+  capabilities:
+    - capability-1
+    - capability-2
+
+  constraints:
+    - "制約1: やってはいけないこと"
+    - "制約2: 遵守すべきルール"
+
+  inputs:
+    - type: text
+      description: "入力データの説明"
+
+  outputs:
+    - type: result
+      schema:
+        summary: string
+        confidence: number
+
+  communication:
+    canSendTo:
+      - other-agent
+    canReceiveFrom:
+      - other-agent
+`;
+
+/**
+ * Analyzerエージェントのテンプレート
+ */
+export const ANALYZER_TEMPLATE = `kind: Agent
+version: v1
+metadata:
+  name: analyzer
+  displayName: "Analyzer"
+  description: "情報解析エージェント"
+  icon: "🔍"
+
+spec:
+  role: |
+    入力データを分析し、構造化された情報を抽出する。
+    パターンや異常を検出し、他のエージェントに報告する。
+
+  capabilities:
+    - data-analysis
+    - pattern-recognition
+    - anomaly-detection
+
+  constraints:
+    - "推測で情報を補完しない"
+    - "確信度が低い場合は明示する"
+    - "外部データを推測で補完しない"
+
+  communication:
+    canSendTo:
+      - predictor
+      - planner
+      - monitor
+    canReceiveFrom:
+      - planner
+      - monitor
+`;
+</file>
+
+<file path="src/lib/index.ts">
+// place files you want to import through the `$lib` alias in this folder.
+</file>
+
+<file path="src/routes/api/generate/+server.ts">
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { generateContent } from '$lib/server/gemini';
+import { buildUiPrompt, buildApiPrompt, buildTestCasePrompt, buildUseCasePrompt } from '$lib/utils/prompt-utils';
+import type { AgentSpec } from '$lib/types';
+
+export const POST: RequestHandler = async ({ request }) => {
+    const apiKey = request.headers.get('x-api-key');
+
+    if (!apiKey) {
+        return json({ error: 'API Key is required' }, { status: 401 });
+    }
+
+    try {
+        const { spec, specs, artifactType, model } = await request.json();
+        const agentSpec = spec as AgentSpec;
+        const agentSpecs = specs as AgentSpec[] | undefined;
+
+        let prompt = '';
+
+        switch (artifactType) {
+            case 'ui-mock':
+                prompt = buildUiPrompt(agentSpec);
+                break;
+            case 'api-spec':
+                prompt = buildApiPrompt(agentSpec);
+                break;
+            case 'test-case':
+                prompt = buildTestCasePrompt(agentSpec);
+                break;
+            case 'use-case-diagram':
+                if (!agentSpecs || agentSpecs.length === 0) {
+                    return json({ error: 'Multiple specs required for use-case diagram' }, { status: 400 });
+                }
+                prompt = buildUseCasePrompt(agentSpecs);
+                break;
+            default:
+                return json({ error: 'Invalid artifact type' }, { status: 400 });
+        }
+
+        const result = await generateContent({
+            apiKey,
+            modelName: model || 'gemini-2.0-flash-exp',
+            prompt
+        });
+
+        // コードブロックの除去 (```html ... ``` -> ...)
+        let content = result;
+        // Markdownコードブロック除去の簡易正規表現
+        const codeBlockRegex = /^```(?:html|yaml|json|markdown|mermaid)?\s*([\s\S]*?)```$/;
+        const match = content.match(codeBlockRegex);
+        if (match) {
+            content = match[1].trim();
+        }
+
+        return json({ content });
+
+    } catch (error) {
+        console.error('API Error:', error);
+        return json({ error: 'Generation failed', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    }
+};
+</file>
+
+<file path="src/routes/api/models/+server.ts">
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { listModels } from '$lib/server/gemini';
+
+export const GET: RequestHandler = async ({ request }) => {
+    const apiKey = request.headers.get('x-api-key');
+
+    if (!apiKey) {
+        return json({ error: 'API Key is required' }, { status: 401 });
+    }
+
+    try {
+        const models = await listModels(apiKey);
+        return json({ models });
+    } catch (error) {
+        console.error('Model List API Error:', error);
+        return json({ error: 'Failed to fetch models', details: error instanceof Error ? error.message : String(error) }, { status: 500 });
+    }
+};
+</file>
+
+<file path="src/app.css">
+/**
+ * Spec-Flow Studio - Global Styles
+ * SF風デザインシステム
+ */
+
+/* ========================================
+   CSS Variables - Design Tokens
+   ======================================== */
+
+:root {
+	/* Colors - Dark Theme */
+	--color-bg-primary: #0a0a0f;
+	--color-bg-secondary: #12121a;
+	--color-bg-tertiary: #1a1a25;
+	--color-bg-panel: rgba(20, 20, 30, 0.85);
+	--color-bg-hover: rgba(40, 40, 60, 0.5);
+
+	/* Accent Colors */
+	--color-accent-primary: #00d4ff;
+	--color-accent-secondary: #7c3aed;
+	--color-accent-success: #10b981;
+	--color-accent-warning: #f59e0b;
+	--color-accent-error: #ef4444;
+
+	/* Text Colors */
+	--color-text-primary: #e5e7eb;
+	--color-text-secondary: #9ca3af;
+	--color-text-muted: #6b7280;
+	--color-text-accent: var(--color-accent-primary);
+
+	/* Border Colors */
+	--color-border-primary: rgba(0, 212, 255, 0.2);
+	--color-border-secondary: rgba(255, 255, 255, 0.1);
+	--color-border-glow: rgba(0, 212, 255, 0.5);
+
+	/* Gradients */
+	--gradient-primary: linear-gradient(135deg, var(--color-accent-primary), var(--color-accent-secondary));
+	--gradient-panel: linear-gradient(180deg, rgba(20, 20, 30, 0.9) 0%, rgba(10, 10, 15, 0.95) 100%);
+	--gradient-glow: radial-gradient(ellipse at center, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+
+	/* Typography */
+	--font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	--font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+	--font-size-xs: 0.75rem;
+	--font-size-sm: 0.875rem;
+	--font-size-base: 1rem;
+	--font-size-lg: 1.125rem;
+	--font-size-xl: 1.25rem;
+	--font-size-2xl: 1.5rem;
+	--font-size-3xl: 2rem;
+
+	/* Spacing */
+	--space-1: 0.25rem;
+	--space-2: 0.5rem;
+	--space-3: 0.75rem;
+	--space-4: 1rem;
+	--space-5: 1.25rem;
+	--space-6: 1.5rem;
+	--space-8: 2rem;
+	--space-10: 2.5rem;
+	--space-12: 3rem;
+
+	/* Border Radius */
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+
+	/* Shadows */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+	--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+	--shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+	--shadow-glow: 0 0 20px rgba(0, 212, 255, 0.3);
+
+	/* Transitions */
+	--transition-fast: 150ms ease;
+	--transition-base: 250ms ease;
+	--transition-slow: 400ms ease;
+
+	/* Layout */
+	--sidebar-width: 240px;
+	--header-height: 56px;
+	--statusbar-height: 32px;
+}
+
+/* ========================================
+   Reset & Base Styles
+   ======================================== */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+html {
+	font-size: 16px;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+body {
+	font-family: var(--font-sans);
+	font-size: var(--font-size-base);
+	line-height: 1.6;
+	color: var(--color-text-primary);
+	background-color: var(--color-bg-primary);
+	min-height: 100vh;
+	overflow-x: hidden;
+}
+
+/* ========================================
+   Typography
+   ======================================== */
+
+h1, h2, h3, h4, h5, h6 {
+	font-weight: 600;
+	line-height: 1.3;
+	color: var(--color-text-primary);
+}
+
+h1 { font-size: var(--font-size-3xl); }
+h2 { font-size: var(--font-size-2xl); }
+h3 { font-size: var(--font-size-xl); }
+h4 { font-size: var(--font-size-lg); }
+
+p {
+	color: var(--color-text-secondary);
+}
+
+code, pre {
+	font-family: var(--font-mono);
+	font-size: var(--font-size-sm);
+}
+
+a {
+	color: var(--color-accent-primary);
+	text-decoration: none;
+	transition: color var(--transition-fast);
+}
+
+a:hover {
+	color: var(--color-accent-secondary);
+}
+
+/* ========================================
+   Utility Classes
+   ======================================== */
+
+.text-accent { color: var(--color-accent-primary); }
+.text-success { color: var(--color-accent-success); }
+.text-warning { color: var(--color-accent-warning); }
+.text-error { color: var(--color-accent-error); }
+.text-muted { color: var(--color-text-muted); }
+
+.font-mono { font-family: var(--font-mono); }
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* ========================================
+   Focus States
+   ======================================== */
+
+:focus-visible {
+	outline: 2px solid var(--color-accent-primary);
+	outline-offset: 2px;
+}
+
+/* ========================================
+   Scrollbar
+   ======================================== */
+
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--color-border-primary);
+	border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-accent-primary);
+}
+
+/* ========================================
+   Animations
+   ======================================== */
+
+@keyframes pulse-glow {
+	0%, 100% {
+		box-shadow: 0 0 5px var(--color-accent-primary);
+	}
+	50% {
+		box-shadow: 0 0 20px var(--color-accent-primary);
+	}
+}
+
+@keyframes fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes slide-in-left {
+	from {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+.animate-fade-in {
+	animation: fade-in var(--transition-base) ease-out;
+}
+
+.animate-slide-in {
+	animation: slide-in-left var(--transition-base) ease-out;
+}
+</file>
+
+<file path="src/app.d.ts">
+// See https://svelte.dev/docs/kit/types#app.d.ts
+// for information about these interfaces
+declare global {
+	namespace App {
+		// interface Error {}
+		// interface Locals {}
+		// interface PageData {}
+		// interface PageState {}
+		// interface Platform {}
+	}
+}
+
+export {};
+</file>
+
+<file path="static/favicon.svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="6" fill="#0a0a0f"/>
+  <path d="M16 6L26 16L16 26L6 16L16 6Z" stroke="#00d4ff" stroke-width="2" fill="none"/>
+  <circle cx="16" cy="16" r="4" fill="#00d4ff"/>
+</svg>
+</file>
+
+<file path="static/manifest.json">
+{
+    "name": "Spec-Flow Studio",
+    "short_name": "Spec-Flow",
+    "description": "AIワークフロー可視化・制御プラットフォーム",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a0f",
+    "theme_color": "#0a0a0f",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/favicon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/favicon.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "categories": [
+        "productivity",
+        "developer tools"
+    ]
+}
+</file>
+
+<file path="static/robots.txt">
+# allow crawling everything by default
+User-agent: *
+Disallow:
+</file>
+
+<file path=".gitignore">
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+</file>
+
+<file path=".npmrc">
+engine-strict=true
+</file>
+
+<file path=".prettierignore">
+# Package Managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb
+
+# Miscellaneous
+/static/
+</file>
+
+<file path=".prettierrc">
+{
+	"useTabs": true,
+	"singleQuote": true,
+	"trailingComma": "none",
+	"printWidth": 100,
+	"plugins": ["prettier-plugin-svelte"],
+	"overrides": [
+		{
+			"files": "*.svelte",
+			"options": {
+				"parser": "svelte"
+			}
+		}
+	]
+}
+</file>
+
+<file path="eslint.config.js">
+import prettier from 'eslint-config-prettier';
+import { fileURLToPath } from 'node:url';
+import { includeIgnoreFile } from '@eslint/compat';
+import js from '@eslint/js';
+import svelte from 'eslint-plugin-svelte';
+import { defineConfig } from 'eslint/config';
+import globals from 'globals';
+import ts from 'typescript-eslint';
+import svelteConfig from './svelte.config.js';
+
+const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
+
+export default defineConfig(
+	includeIgnoreFile(gitignorePath),
+	js.configs.recommended,
+	...ts.configs.recommended,
+	...svelte.configs.recommended,
+	prettier,
+	...svelte.configs.prettier,
+	{
+		languageOptions: { globals: { ...globals.browser, ...globals.node } },
+
+		rules: {
+			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
+			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
+			'no-undef': 'off'
+		}
+	},
+	{
+		files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
+
+		languageOptions: {
+			parserOptions: {
+				projectService: true,
+				extraFileExtensions: ['.svelte'],
+				parser: ts.parser,
+				svelteConfig
+			}
+		}
+	}
+);
+</file>
+
+<file path="README.md">
+# sv
+
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+
+## Creating a project
+
+If you're seeing this, you've probably already done this step. Congrats!
+
+```sh
+# create a new project in the current directory
+npx sv create
+
+# create a new project in my-app
+npx sv create my-app
+```
+
+## Developing
+
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+
+```sh
+npm run dev
+
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+To create a production version of your app:
+
+```sh
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+</file>
+
+<file path="svelte.config.js">
+import adapter from '@sveltejs/adapter-auto';
+import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+
+/** @type {import('@sveltejs/kit').Config} */
+const config = {
+	// Consult https://svelte.dev/docs/kit/integrations
+	// for more information about preprocessors
+	preprocess: vitePreprocess(),
+
+	kit: {
+		// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
+		// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
+		// See https://svelte.dev/docs/kit/adapters for more information about adapters.
+		adapter: adapter()
+	}
+};
+
+export default config;
+</file>
+
+<file path="tsconfig.json">
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"rewriteRelativeImportExtensions": true,
+		"allowJs": true,
+		"checkJs": true,
+		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"strict": true,
+		"moduleResolution": "bundler"
+	}
+	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
+	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
+	//
+	// To make changes to top-level options such as include and exclude, we recommend extending
+	// the generated config; see https://svelte.dev/docs/kit/configuration#typescript
+}
+</file>
+
+<file path="vite.config.ts">
+import { sveltekit } from '@sveltejs/kit/vite';
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+	plugins: [sveltekit()]
+});
+</file>
+
+<file path="src/routes/history/+page.svelte">
+<!--
+  History Page
+  パッチ履歴のタイムライン表示とタイムトラベル
+-->
+<script lang="ts">
+	import { Panel, Button } from '$lib/components/ui';
+	import {
+		historyStore,
+		patches,
+		currentPatchIndex,
+		canUndo,
+		canRedo
+	} from '$lib/stores/history-store';
+	import { specs, setSpecs } from '$lib/stores/spec-store';
+	import type { SpecPatch } from '$lib/types';
+
+	// Undo
+	function handleUndo() {
+		const newSpecs = historyStore.undo();
+		if (newSpecs) {
+			setSpecs(newSpecs, 'draft-spec');
+		}
+	}
+
+	// Redo
+	function handleRedo() {
+		const newSpecs = historyStore.redo();
+		if (newSpecs) {
+			setSpecs(newSpecs, 'draft-spec');
+		}
+	}
+
+	// 特定のパッチにロールバック
+	function handleRevertTo(patchId: string) {
+		if (confirm('このバージョンに戻しますか？現在の変更は失われます。')) {
+			const newSpecs = historyStore.revertTo(patchId);
+			if (newSpecs) {
+				setSpecs(newSpecs, 'draft-spec');
+			}
+		}
+	}
+
+	// 影響度に応じた色
+	function getImpactColor(impact: 'low' | 'medium' | 'high'): string {
+		switch (impact) {
+			case 'high':
+				return 'var(--color-accent-error)';
+			case 'medium':
+				return 'var(--color-accent-warning)';
+			default:
+				return 'var(--color-accent-success)';
+		}
+	}
+
+	// 操作に応じたアイコン
+	function getOperationIcon(op: 'add' | 'remove' | 'modify'): string {
+		switch (op) {
+			case 'add':
+				return '+';
+			case 'remove':
+				return '−';
+			default:
+				return '~';
+		}
+	}
+</script>
+
+<div class="history-page">
+	<header class="page-header">
+		<div class="header-left">
+			<h1>履歴</h1>
+			<span class="patch-count">{$patches.length} パッチ</span>
+		</div>
+		<div class="header-right">
+			<Button variant="secondary" size="sm" onclick={handleUndo} disabled={!$canUndo}>
+				↶ 元に戻す
+			</Button>
+			<Button variant="secondary" size="sm" onclick={handleRedo} disabled={!$canRedo}>
+				やり直す ↷
+			</Button>
+		</div>
+	</header>
+
+	<div class="history-content">
+		{#if $patches.length === 0}
+			<Panel>
+				<div class="empty-state">
+					<p>履歴がありません</p>
+					<p class="text-muted">
+						エディタで変更を加えて「コミット」すると、ここに履歴が表示されます。
+					</p>
+				</div>
+			</Panel>
+		{:else}
+			<div class="timeline">
+				{#each $patches as patch, index}
+					<div class="timeline-item" class:current={index === $currentPatchIndex}>
+						<div class="timeline-marker">
+							<div class="marker-dot"></div>
+							{#if index < $patches.length - 1}
+								<div class="marker-line"></div>
+							{/if}
+						</div>
+						<div class="timeline-content">
+							<Panel>
+								<div class="patch-header">
+									<div class="patch-info">
+										<span class="patch-name">{patch.metadata.name}</span>
+										<span class="patch-meta">
+											{new Date(patch.metadata.createdAt).toLocaleString()} ・ {patch.metadata
+												.author}
+										</span>
+									</div>
+									{#if index !== $currentPatchIndex}
+										<Button
+											variant="ghost"
+											size="sm"
+											onclick={() => handleRevertTo(patch.metadata.id)}
+										>
+											戻す
+										</Button>
+									{:else}
+										<span class="current-badge">現在</span>
+									{/if}
+								</div>
+
+								<p class="patch-summary">{patch.spec.summary}</p>
+
+								{#if patch.spec.rationale}
+									<p class="patch-rationale">理由: {patch.spec.rationale}</p>
+								{/if}
+
+								<div class="diff-list">
+									{#each patch.spec.diffs as diff}
+										<div class="diff-item">
+											<span class="diff-op" style="color: {getImpactColor(diff.impact)}">
+												{getOperationIcon(diff.operation)}
+											</span>
+											<span class="diff-agent">{diff.agentName}</span>
+											<span class="diff-path">{diff.path}</span>
+											{#if diff.operation === 'add' && diff.after}
+												<span class="diff-value add">"{diff.after}"</span>
+											{:else if diff.operation === 'remove' && diff.before}
+												<span class="diff-value remove">"{diff.before}"</span>
+											{:else if diff.operation === 'modify'}
+												<span class="diff-value remove">"{diff.before}"</span>
+												→
+												<span class="diff-value add">"{diff.after}"</span>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							</Panel>
+						</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</div>
+</div>
+
+<style>
+	.history-page {
+		animation: fade-in var(--transition-base) ease-out;
+	}
+
+	.page-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--space-6);
+	}
+
+	.header-left {
+		display: flex;
+		align-items: baseline;
+		gap: var(--space-3);
+	}
+
+	.patch-count {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+	}
+
+	.header-right {
+		display: flex;
+		gap: var(--space-2);
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: var(--space-8);
+		color: var(--color-text-secondary);
+	}
+
+	.text-muted {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+		margin-top: var(--space-2);
+	}
+
+	/* Timeline */
+	.timeline {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	.timeline-item {
+		display: flex;
+		gap: var(--space-4);
+	}
+
+	.timeline-item.current .marker-dot {
+		background: var(--color-accent-primary);
+		box-shadow: 0 0 8px var(--color-accent-primary);
+	}
+
+	.timeline-marker {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		width: 20px;
+		flex-shrink: 0;
+	}
+
+	.marker-dot {
+		width: 12px;
+		height: 12px;
+		border-radius: 50%;
+		background: var(--color-border-primary);
+		border: 2px solid var(--color-bg-secondary);
+	}
+
+	.marker-line {
+		flex: 1;
+		width: 2px;
+		background: var(--color-border-secondary);
+		margin-top: var(--space-2);
+	}
+
+	.timeline-content {
+		flex: 1;
+		max-width: 600px;
+	}
+
+	/* Patch Card */
+	.patch-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: flex-start;
+		margin-bottom: var(--space-3);
+	}
+
+	.patch-info {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.patch-name {
+		font-weight: 600;
+		color: var(--color-text-primary);
+	}
+
+	.patch-meta {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+	}
+
+	.current-badge {
+		font-size: var(--font-size-xs);
+		padding: var(--space-1) var(--space-2);
+		background: rgba(0, 212, 255, 0.2);
+		color: var(--color-accent-primary);
+		border-radius: var(--radius-sm);
+	}
+
+	.patch-summary {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+		margin-bottom: var(--space-2);
+	}
+
+	.patch-rationale {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		font-style: italic;
+		margin-bottom: var(--space-3);
+	}
+
+	/* Diff List */
+	.diff-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		padding-top: var(--space-3);
+		border-top: 1px solid var(--color-border-secondary);
+	}
+
+	.diff-item {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		font-size: var(--font-size-xs);
+		font-family: var(--font-mono);
+	}
+
+	.diff-op {
+		font-weight: bold;
+		width: 16px;
+		text-align: center;
+	}
+
+	.diff-agent {
+		color: var(--color-accent-secondary);
+	}
+
+	.diff-path {
+		color: var(--color-text-muted);
+	}
+
+	.diff-value {
+		padding: 0 var(--space-1);
+		border-radius: var(--radius-sm);
+	}
+
+	.diff-value.add {
+		background: rgba(16, 185, 129, 0.2);
+		color: var(--color-accent-success);
+	}
+
+	.diff-value.remove {
+		background: rgba(239, 68, 68, 0.2);
+		color: var(--color-accent-error);
+		text-decoration: line-through;
+	}
+</style>
+</file>
+
+<file path="src/routes/settings/+page.svelte">
+<!--
+  Settings Page - 設定
+-->
+<script lang="ts">
+	import { Panel, Button, StatusIndicator } from '$lib/components/ui';
+	import { integrationConfig, updateConfig } from '$lib/stores/integration-store';
+	import { settings } from '$lib/stores/settings-store';
+	import { session } from '$lib/stores/session-store';
+	import { encryptData, decryptData } from '$lib/utils/crypto-utils';
+	import { saveToStorage, loadFromStorage, STORAGE_KEYS } from '$lib/utils/storage-utils';
+
+	// Aether Console Settings
+	let consoleUrl = $state($integrationConfig.consoleUrl);
+	let autoSync = $state($integrationConfig.autoSync);
+	let syncInterval = $state($integrationConfig.syncInterval);
+
+	function saveIntegrationSettings() {
+		updateConfig({
+			consoleUrl,
+			autoSync,
+			syncInterval
+		});
+		alert('連携設定を保存しました');
+	}
+
+	// AI Settings
+	let apiKeyInput = $state('');
+	let passwordInput = $state('');
+	let isApiKeyLoading = $state(false);
+	let isModelRefreshing = $state(false);
+
+	async function saveApiKey() {
+		if (!apiKeyInput || !passwordInput) {
+			alert('APIキーとパスワードを入力してください');
+			return;
+		}
+
+		isApiKeyLoading = true;
+		try {
+			// 暗号化して保存
+			const encrypted = await encryptData(apiKeyInput, passwordInput);
+			saveToStorage('spec-flow-studio:api-key-encrypted', encrypted);
+
+			// パスワードをセッションに保持
+			session.setPassword(passwordInput);
+
+			// 設定更新
+			settings.updateSettings({ hasApiKey: true });
+
+			// モデル一覧の取得を試行
+			await refreshModels(apiKeyInput);
+
+			// 入力クリア
+			apiKeyInput = '';
+			passwordInput = '';
+
+			alert('APIキーを暗号化して保存し、モデル一覧を更新しました');
+		} catch (error) {
+			console.error(error);
+			alert('APIキーの保存に失敗しました');
+		} finally {
+			isApiKeyLoading = false;
+		}
+	}
+
+	async function refreshModels(apiKeyRaw?: string) {
+		let apiKey = apiKeyRaw;
+
+		// 引数がない場合は保存されたキーを復号化して使用
+		if (!apiKey && $settings.hasApiKey && $session.encryptionPassword) {
+			const encryptedKey = loadFromStorage('spec-flow-studio:api-key-encrypted', '');
+			if (encryptedKey) {
+				try {
+					apiKey = await decryptData(encryptedKey, $session.encryptionPassword);
+				} catch (e) {
+					console.error('Failed to decrypt API key for model refresh', e);
+				}
+			}
+		}
+
+		if (!apiKey) {
+			console.log('Skipping model refresh: No API key available');
+			return;
+		}
+
+		isModelRefreshing = true;
+		try {
+			const res = await fetch('/api/models', {
+				headers: { 'x-api-key': apiKey }
+			});
+			if (res.ok) {
+				const data = await res.json();
+				const models = data.models.map((m: any) => m.name);
+				if (models.length > 0) {
+					settings.updateSettings({ availableModels: models });
+					// 現在選択されているモデルがリストになければ、リストの最初を選択
+					if (!$settings.geminiModel || !models.includes($settings.geminiModel)) {
+						settings.updateSettings({ geminiModel: models[0] });
+					}
+				}
+			}
+		} catch (e) {
+			console.error('Failed to refresh models', e);
+		} finally {
+			isModelRefreshing = false;
+		}
+	}
+
+	// 手動更新ボタン用ハンドラ
+	async function handleRefreshClick() {
+		if (!$session.encryptionPassword) {
+			alert('モデル一覧を更新するには、まずAPIキーを保存（または再入力）してください');
+			return;
+		}
+		await refreshModels();
+		alert('モデル一覧を更新しました');
+	}
+
+	function handleModelChange(e: Event) {
+		const select = e.target as HTMLSelectElement;
+		settings.updateSettings({ geminiModel: select.value });
+	}
+</script>
+
+<div class="page">
+	<header class="page__header">
+		<h1>設定</h1>
+		<p class="page__subtitle">アプリケーション設定</p>
+	</header>
+
+	<div class="settings-grid">
+		<!-- AI設定 -->
+		<Panel title="AI 生成設定 (Gemini API)">
+			<div class="settings-form">
+				<div class="form-group">
+					<div class="model-select-header">
+						<label for="geminiModel">使用モデル</label>
+						<button
+							class="refresh-btn"
+							onclick={handleRefreshClick}
+							disabled={isModelRefreshing || !$settings.hasApiKey}
+							title="モデル一覧を更新"
+						>
+							{#if isModelRefreshing}
+								⟳ Updating...
+							{:else}
+								⟳ モデル一覧を更新
+							{/if}
+						</button>
+					</div>
+					<select
+						id="geminiModel"
+						value={$settings.geminiModel}
+						onchange={handleModelChange}
+						class="form-select"
+					>
+						{#each $settings.availableModels as model}
+							<option value={model}>{model}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="api-key-section">
+					<div class="status-row">
+						<span class="status-label">APIキー状態:</span>
+						<StatusIndicator
+							status={$settings.hasApiKey ? 'success' : 'warning'}
+							label={$settings.hasApiKey ? '設定済み (暗号化)' : '未設定'}
+						/>
+					</div>
+
+					<div class="form-group">
+						<label for="apiKey">Gemini API Key</label>
+						<input
+							id="apiKey"
+							type="password"
+							bind:value={apiKeyInput}
+							placeholder={$settings.hasApiKey ? '••••••••••••••••' : 'AIza...'}
+						/>
+					</div>
+
+					<div class="form-group">
+						<label for="password">暗号化パスワード</label>
+						<input
+							id="password"
+							type="password"
+							bind:value={passwordInput}
+							placeholder="APIキーを保護するためのパスワード"
+						/>
+						<p class="help-text">
+							※ APIキーはこのパスワードで暗号化され、ブラウザのLocalStorageに保存されます。<br />
+							※ サーバーには暗号化された状態でも保存されません。<br />
+							※ 生成機能を使用するたびにこのパスワードが必要になります（セッション中は保持）。
+						</p>
+					</div>
+
+					<div class="form-actions">
+						<Button
+							variant="primary"
+							onclick={saveApiKey}
+							disabled={!apiKeyInput || !passwordInput || isApiKeyLoading}
+							loading={isApiKeyLoading}
+						>
+							APIキーを保存
+						</Button>
+					</div>
+				</div>
+			</div>
+		</Panel>
+
+		<!-- Aether Console 連携 -->
+		<Panel title="Aether Console 連携">
+			<form
+				class="settings-form"
+				onsubmit={(e) => {
+					e.preventDefault();
+					saveIntegrationSettings();
+				}}
+			>
+				<div class="form-group">
+					<label for="consoleUrl">Console URL</label>
+					<input
+						id="consoleUrl"
+						type="text"
+						bind:value={consoleUrl}
+						placeholder="ws://localhost:5173/api/ws"
+					/>
+				</div>
+
+				<div class="form-group form-group--inline">
+					<input id="autoSync" type="checkbox" bind:checked={autoSync} />
+					<label for="autoSync">自動同期を有効にする</label>
+				</div>
+
+				<div class="form-group">
+					<label for="syncInterval">同期間隔 (ms)</label>
+					<input
+						id="syncInterval"
+						type="number"
+						bind:value={syncInterval}
+						min="1000"
+						max="60000"
+						step="1000"
+					/>
+				</div>
+
+				<div class="form-actions">
+					<Button type="submit" variant="secondary">連携設定を保存</Button>
+				</div>
+			</form>
+		</Panel>
+
+		<Panel title="データ管理">
+			<div class="data-actions">
+				<div class="data-action">
+					<div class="data-action__info">
+						<h4>ローカルデータのエクスポート</h4>
+						<p>Spec、生成物、パッチ履歴をJSONでエクスポート</p>
+					</div>
+					<Button variant="secondary" size="sm">エクスポート</Button>
+				</div>
+
+				<div class="data-action">
+					<div class="data-action__info">
+						<h4>ローカルデータのインポート</h4>
+						<p>エクスポートしたJSONファイルを読み込み</p>
+					</div>
+					<Button variant="secondary" size="sm">インポート</Button>
+				</div>
+
+				<div class="data-action data-action--danger">
+					<div class="data-action__info">
+						<h4>全データを削除</h4>
+						<p>ローカルに保存された全てのデータを削除</p>
+					</div>
+					<Button variant="danger" size="sm">削除</Button>
+				</div>
+			</div>
+		</Panel>
+	</div>
+</div>
+
+<style>
+	.page {
+		animation: fade-in var(--transition-base) ease-out;
+	}
+
+	.page__header {
+		margin-bottom: var(--space-8);
+	}
+
+	.page__header h1 {
+		margin-bottom: var(--space-2);
+	}
+
+	.page__subtitle {
+		color: var(--color-text-muted);
+	}
+
+	.settings-grid {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-6);
+		max-width: 600px;
+	}
+
+	/* Form */
+	.settings-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-5);
+	}
+
+	.form-group {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.form-group--inline {
+		flex-direction: row;
+		align-items: center;
+	}
+
+	.model-select-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--space-2);
+	}
+
+	.refresh-btn {
+		background: none;
+		border: none;
+		color: var(--color-accent-primary);
+		font-size: var(--font-size-xs);
+		cursor: pointer;
+		padding: 0;
+		opacity: 0.8;
+		transition: opacity 0.2s;
+	}
+
+	.refresh-btn:hover {
+		opacity: 1;
+		text-decoration: underline;
+	}
+
+	.refresh-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+		text-decoration: none;
+	}
+
+	.form-group label {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.form-group input[type='text'],
+	.form-group input[type='password'],
+	.form-group input[type='number'],
+	.form-select {
+		padding: var(--space-3);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-md);
+		color: var(--color-text-primary);
+		font-family: var(--font-mono);
+		font-size: var(--font-size-sm);
+		width: 100%;
+	}
+
+	.form-group input:focus,
+	.form-select:focus {
+		outline: none;
+		border-color: var(--color-accent-primary);
+		box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+	}
+
+	.form-group input[type='checkbox'] {
+		accent-color: var(--color-accent-primary);
+		width: auto;
+	}
+
+	.help-text {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		line-height: 1.4;
+		margin-top: var(--space-1);
+	}
+
+	.status-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		margin-bottom: var(--space-4);
+		padding-bottom: var(--space-4);
+		border-bottom: 1px solid var(--color-border-secondary);
+	}
+
+	.status-label {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.form-actions {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: var(--space-2);
+	}
+
+	/* Data Actions */
+	.data-actions {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	.data-action {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: var(--space-4);
+		background: var(--color-bg-tertiary);
+		border-radius: var(--radius-md);
+	}
+
+	.data-action--danger {
+		border: 1px solid rgba(239, 68, 68, 0.3);
+	}
+
+	.data-action__info h4 {
+		font-size: var(--font-size-sm);
+		margin-bottom: var(--space-1);
+	}
+
+	.data-action__info p {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+	}
+</style>
+</file>
+
+<file path="src/routes/viewer/+page.svelte">
+<!--
+  Viewer Page
+  AI生成物ビューア (UI Mock / API Spec)
+-->
+<script lang="ts">
+	import { onDestroy } from 'svelte';
+	import { Panel, Button } from '$lib/components/ui';
+	import { artifacts, removeArtifact, latestArtifacts } from '$lib/stores/artifact-store';
+	import { SpecEditor } from '$lib/components/editor';
+	import type { Artifact } from '$lib/types';
+
+	// 状態
+	let selectedArtifactId = $state<string | null>(null);
+	let viewMode = $state<'preview' | 'code'>('preview');
+
+	// 選択中のArtifact
+	let selectedArtifact = $derived.by(() => {
+		if ($artifacts.length === 0) return null;
+		if (selectedArtifactId) {
+			return $artifacts.find((a) => a.id === selectedArtifactId) || $artifacts[0];
+		}
+		return $artifacts[$artifacts.length - 1]; // デフォルトで最新
+	});
+
+	// Artifact選択ハンドラ
+	function selectArtifact(id: string) {
+		selectedArtifactId = id;
+	}
+
+	// 削除ハンドラ
+	function handleDelete(id: string) {
+		if (confirm('この生成物を削除しますか？')) {
+			removeArtifact(id);
+			if (selectedArtifactId === id) {
+				selectedArtifactId = null;
+			}
+		}
+	}
+
+	// UI Mock プレビュー用のBlob URL
+	let previewUrl = $state<string | null>(null);
+
+	$effect(() => {
+		if (previewUrl) {
+			URL.revokeObjectURL(previewUrl);
+			previewUrl = null;
+		}
+
+		if (selectedArtifact && selectedArtifact.type === 'ui-mock') {
+			const blob = new Blob([selectedArtifact.content], { type: 'text/html' });
+			previewUrl = URL.createObjectURL(blob);
+		}
+	});
+
+	onDestroy(() => {
+		if (previewUrl) URL.revokeObjectURL(previewUrl);
+	});
+</script>
+
+<div class="viewer-page">
+	<header class="viewer-header">
+		<h1>生成物ビューア</h1>
+
+		{#if selectedArtifact}
+			<div class="header-controls">
+				<div class="view-mode-toggle">
+					<button
+						class="toggle-btn"
+						class:active={viewMode === 'preview'}
+						onclick={() => (viewMode = 'preview')}
+					>
+						Preview
+					</button>
+					<button
+						class="toggle-btn"
+						class:active={viewMode === 'code'}
+						onclick={() => (viewMode = 'code')}
+					>
+						Code
+					</button>
+				</div>
+				<Button variant="danger" size="sm" onclick={() => handleDelete(selectedArtifact.id)}
+					>削除</Button
+				>
+			</div>
+		{/if}
+	</header>
+
+	<div class="viewer-layout">
+		<!-- 左側: Artifactリスト -->
+		<div class="viewer-sidebar">
+			<Panel title="Artifacts" class="h-full">
+				<div class="artifact-list">
+					{#each $artifacts as artifact}
+						<button
+							class="artifact-item"
+							class:active={selectedArtifact?.id === artifact.id}
+							onclick={() => selectArtifact(artifact.id)}
+						>
+							<div class="artifact-icon">
+								{#if artifact.type === 'ui-mock'}🎨{:else}📄{/if}
+							</div>
+							<div class="artifact-info">
+								<span class="artifact-name">{artifact.name}</span>
+								<span class="artifact-date">
+									{new Date(artifact.generatedAt).toLocaleTimeString()}
+								</span>
+							</div>
+						</button>
+					{/each}
+
+					{#if $artifacts.length === 0}
+						<div class="empty-list">
+							<p>生成物がありません</p>
+							<a href="/editor" class="text-accent underline">エディタで生成</a>
+						</div>
+					{/if}
+				</div>
+			</Panel>
+		</div>
+
+		<!-- 右側: ビューアエリア -->
+		<div class="viewer-main">
+			{#if selectedArtifact}
+				<div class="artifact-content">
+					<!-- Preview Mode -->
+					<div class="content-view" class:hidden={viewMode !== 'preview'}>
+						{#if selectedArtifact.type === 'ui-mock'}
+							<div class="preview-container">
+								{#if previewUrl}
+									<iframe src={previewUrl} title="UI Preview" class="preview-iframe"></iframe>
+								{/if}
+							</div>
+						{:else if selectedArtifact.type === 'api-spec'}
+							<div class="api-preview-placeholder">
+								<p>OpenAPIプレビューは現在コードモードのみ対応しています。</p>
+								<Button size="sm" onclick={() => (viewMode = 'code')}>コードを表示</Button>
+							</div>
+						{:else}
+							<div class="text-preview">
+								<pre>{selectedArtifact.content}</pre>
+							</div>
+						{/if}
+					</div>
+
+					<!-- Code Mode -->
+					<div class="content-view" class:hidden={viewMode !== 'code'}>
+						<SpecEditor value={selectedArtifact.content} readonly={true} />
+					</div>
+				</div>
+			{:else}
+				<div class="empty-state">
+					<p>左側のリストから生成物を選択するか、エディタで新しく生成してください。</p>
+				</div>
+			{/if}
+		</div>
+	</div>
+</div>
+
+<style>
+	.viewer-page {
+		height: calc(100vh - var(--header-height));
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		animation: fade-in var(--transition-base) ease-out;
+	}
+
+	.viewer-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		height: var(--space-10);
+	}
+
+	.header-controls {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+	}
+
+	.view-mode-toggle {
+		display: flex;
+		background: var(--color-bg-tertiary);
+		border-radius: var(--radius-md);
+		padding: 2px;
+		border: 1px solid var(--color-border-primary);
+	}
+
+	.toggle-btn {
+		padding: var(--space-1) var(--space-3);
+		border: none;
+		background: transparent;
+		color: var(--color-text-secondary);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		font-size: var(--font-size-sm);
+		transition: all 0.2s;
+	}
+
+	.toggle-btn.active {
+		background: var(--color-bg-primary);
+		color: var(--color-text-primary);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+	}
+
+	.viewer-layout {
+		flex: 1;
+		display: grid;
+		grid-template-columns: 250px 1fr;
+		gap: var(--space-4);
+		min-height: 0;
+	}
+
+	/* Sidebar */
+	.viewer-sidebar {
+		height: 100%;
+		overflow-y: auto;
+	}
+
+	:global(.h-full) {
+		height: 100%;
+	}
+
+	.artifact-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.artifact-item {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-3);
+		background: transparent;
+		border: 1px solid transparent;
+		border-radius: var(--radius-md);
+		cursor: pointer;
+		text-align: left;
+		transition: all 0.2s;
+		width: 100%;
+	}
+
+	.artifact-item:hover {
+		background: var(--color-bg-hover);
+	}
+
+	.artifact-item.active {
+		background: rgba(0, 212, 255, 0.1);
+		border-color: var(--color-accent-primary);
+	}
+
+	.artifact-icon {
+		font-size: var(--font-size-lg);
+	}
+
+	.artifact-info {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.artifact-name {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-primary);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.artifact-date {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+	}
+
+	.empty-list {
+		padding: var(--space-4);
+		text-align: center;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-sm);
+	}
+
+	/* Main */
+	.viewer-main {
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-lg);
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.artifact-content {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+	}
+
+	.content-view {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		height: 100%;
+	}
+
+	.content-view.hidden {
+		display: none;
+	}
+
+	.preview-container {
+		flex: 1;
+		background: white; /* プレビューは見やすく白背景 */
+	}
+
+	.preview-iframe {
+		width: 100%;
+		height: 100%;
+		border: none;
+	}
+
+	.api-preview-placeholder {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		gap: var(--space-4);
+		color: var(--color-text-muted);
+	}
+
+	.text-preview {
+		padding: var(--space-4);
+		overflow: auto;
+		font-family: var(--font-mono);
+		white-space: pre-wrap;
+	}
+
+	.empty-state {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		color: var(--color-text-secondary);
+	}
+
+	.text-accent {
+		color: var(--color-accent-primary);
+	}
+
+	.underline {
+		text-decoration: underline;
+	}
+</style>
+</file>
+
+<file path="src/routes/+layout.svelte">
+<script lang="ts">
+	import '../app.css';
+	import Sidebar from '$lib/components/Sidebar.svelte';
+	import StatusBar from '$lib/components/StatusBar.svelte';
+
+	let { children } = $props();
+</script>
+
+<svelte:head>
+	<title>Spec-Flow Studio</title>
+</svelte:head>
+
+<div class="app">
+	<Sidebar />
+	<main class="main">
+		{@render children()}
+	</main>
+	<StatusBar />
+</div>
+
+<style>
+	.app {
+		min-height: 100vh;
+		background: var(--color-bg-primary);
+	}
+
+	.main {
+		margin-left: var(--sidebar-width);
+		min-height: 100vh;
+		padding: var(--space-6);
+		padding-bottom: calc(var(--statusbar-height) + var(--space-6));
+	}
+
+	/* 背景のグロー効果 */
+	.app::before {
+		content: '';
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: var(--gradient-glow);
+		pointer-events: none;
+		z-index: -1;
+	}
+</style>
+</file>
+
+<file path="src/routes/+page.svelte">
+<!--
+  Dashboard Page
+  ダッシュボード - 現在のSpec名、Artifact一覧、接続状態を表示
+-->
+<script lang="ts">
+	import { Panel, Button, StatusIndicator } from '$lib/components/ui';
+	import { specs, currentSpecName, hasSpec } from '$lib/stores/spec-store';
+	import { latestArtifacts, artifactCounts, hasArtifacts } from '$lib/stores/artifact-store';
+	import { connectionStatus, patchCount } from '$lib/stores/integration-store';
+
+	const statusMap = {
+		disconnected: 'offline',
+		connecting: 'warning',
+		connected: 'success',
+		error: 'error'
+	} as const;
+
+	const artifactTypeLabels = {
+		'ui-mock': 'UIモック',
+		'api-spec': 'API仕様',
+		'test-case': 'テストケース',
+		'use-case': 'ユースケース'
+	};
+
+	let currentStatus = $derived(statusMap[$connectionStatus]);
+</script>
+
+<div class="dashboard">
+	<header class="dashboard__header">
+		<h1>ダッシュボード</h1>
+		<p class="dashboard__subtitle">Spec-Flow Studio へようこそ</p>
+	</header>
+
+	<div class="dashboard__grid">
+		<!-- 現在のSpec -->
+		<Panel title="現在の仕様" variant="accent" glow={$hasSpec}>
+			{#if $hasSpec}
+				<div class="spec-info">
+					<div class="spec-info__name">{$currentSpecName || 'Untitled'}</div>
+					<div class="spec-info__count">{$specs.length} エージェント</div>
+					<div class="spec-info__agents">
+						{#each $specs as agent}
+							<span class="spec-info__agent">{agent.displayName}</span>
+						{/each}
+					</div>
+				</div>
+			{:else}
+				<div class="empty-state">
+					<span class="empty-state__icon">◇</span>
+					<p class="empty-state__text">仕様が読み込まれていません</p>
+					<Button variant="primary" size="sm">
+						エディタを開く
+					</Button>
+				</div>
+			{/if}
+		</Panel>
+
+		<!-- 接続状態 -->
+		<Panel title="Aether Console 接続">
+			<div class="connection-info">
+				<StatusIndicator
+					status={currentStatus}
+					pulse={$connectionStatus === 'connected'}
+					size="lg"
+				/>
+				<div class="connection-info__details">
+					{#if $connectionStatus === 'connected'}
+						<p>Aether Console と接続中</p>
+						<span class="connection-info__patches">{$patchCount} パッチ</span>
+					{:else if $connectionStatus === 'connecting'}
+						<p>接続を試行中...</p>
+					{:else if $connectionStatus === 'error'}
+						<p class="text-error">接続エラー</p>
+						<Button variant="secondary" size="sm">再接続</Button>
+					{:else}
+						<p>未接続</p>
+						<Button variant="primary" size="sm">接続</Button>
+					{/if}
+				</div>
+			</div>
+		</Panel>
+
+		<!-- 生成物サマリー -->
+		<Panel title="生成物">
+			{#if $hasArtifacts}
+				<div class="artifacts-summary">
+					<div class="artifacts-summary__counts">
+						{#each Object.entries($artifactCounts) as [type, count]}
+							<div class="artifacts-summary__item">
+								<span class="artifacts-summary__count">{count}</span>
+								<span class="artifacts-summary__type">{artifactTypeLabels[type as keyof typeof artifactTypeLabels]}</span>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{:else}
+				<div class="empty-state">
+					<span class="empty-state__icon">◎</span>
+					<p class="empty-state__text">生成物はありません</p>
+					<p class="empty-state__hint">エディタで仕様を作成し、AIで生成してください</p>
+				</div>
+			{/if}
+		</Panel>
+
+		<!-- 最近の生成物 -->
+		<Panel title="最近の生成物" class="dashboard__recent">
+			{#if $latestArtifacts.length > 0}
+				<ul class="recent-list">
+					{#each $latestArtifacts as artifact}
+						<li class="recent-list__item">
+							<span class="recent-list__type">{artifactTypeLabels[artifact.type]}</span>
+							<span class="recent-list__name">{artifact.name}</span>
+							<span class="recent-list__time font-mono">
+								{new Date(artifact.generatedAt).toLocaleDateString('ja-JP')}
+							</span>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="text-muted">まだ生成物がありません</p>
+			{/if}
+		</Panel>
+	</div>
+</div>
+
+<style>
+	.dashboard {
+		animation: fade-in var(--transition-base) ease-out;
+	}
+
+	.dashboard__header {
+		margin-bottom: var(--space-8);
+	}
+
+	.dashboard__header h1 {
+		margin-bottom: var(--space-2);
+	}
+
+	.dashboard__subtitle {
+		color: var(--color-text-muted);
+	}
+
+	.dashboard__grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--space-6);
+	}
+
+	.dashboard__recent {
+		grid-column: span 2;
+	}
+
+	/* Spec Info */
+	.spec-info__name {
+		font-size: var(--font-size-xl);
+		font-weight: 600;
+		color: var(--color-accent-primary);
+		margin-bottom: var(--space-2);
+	}
+
+	.spec-info__count {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+		margin-bottom: var(--space-3);
+	}
+
+	.spec-info__agents {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-2);
+	}
+
+	.spec-info__agent {
+		padding: var(--space-1) var(--space-2);
+		background: var(--color-bg-tertiary);
+		border-radius: var(--radius-sm);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-secondary);
+	}
+
+	/* Connection Info */
+	.connection-info {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+	}
+
+	.connection-info__details {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.connection-info__patches {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+		font-family: var(--font-mono);
+	}
+
+	/* Artifacts Summary */
+	.artifacts-summary__counts {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: var(--space-4);
+	}
+
+	.artifacts-summary__item {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		padding: var(--space-4);
+		background: var(--color-bg-tertiary);
+		border-radius: var(--radius-md);
+	}
+
+	.artifacts-summary__count {
+		font-size: var(--font-size-2xl);
+		font-weight: 600;
+		color: var(--color-accent-primary);
+		font-family: var(--font-mono);
+	}
+
+	.artifacts-summary__type {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		margin-top: var(--space-1);
+	}
+
+	/* Empty State */
+	.empty-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: var(--space-6);
+		gap: var(--space-3);
+	}
+
+	.empty-state__icon {
+		font-size: var(--font-size-3xl);
+		color: var(--color-text-muted);
+	}
+
+	.empty-state__text {
+		color: var(--color-text-secondary);
+	}
+
+	.empty-state__hint {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-muted);
+	}
+
+	/* Recent List */
+	.recent-list {
+		list-style: none;
+	}
+
+	.recent-list__item {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+		padding: var(--space-3) 0;
+		border-bottom: 1px solid var(--color-border-secondary);
+	}
+
+	.recent-list__item:last-child {
+		border-bottom: none;
+	}
+
+	.recent-list__type {
+		font-size: var(--font-size-xs);
+		color: var(--color-accent-primary);
+		background: rgba(0, 212, 255, 0.1);
+		padding: var(--space-1) var(--space-2);
+		border-radius: var(--radius-sm);
+		min-width: 80px;
+		text-align: center;
+	}
+
+	.recent-list__name {
+		flex: 1;
+		color: var(--color-text-primary);
+	}
+
+	.recent-list__time {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+	}
+
+	/* Responsive */
+	@media (max-width: 900px) {
+		.dashboard__grid {
+			grid-template-columns: 1fr;
+		}
+
+		.dashboard__recent {
+			grid-column: span 1;
+		}
+	}
+</style>
+</file>
+
+<file path="src/app.html">
+<!doctype html>
+<html lang="ja">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="theme-color" content="#0a0a0f" />
+		<meta name="description" content="Spec-Flow Studio - AIワークフロー可視化・制御プラットフォーム" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
+</file>
+
+<file path="src/lib/utils/index.ts">
+// Utilities
+export * from './yaml-utils';
+export * from './storage-utils';
+export * from './crypto-utils';
+export * from './diff-utils';
+</file>
+
+<file path="package.json">
+{
+	"name": "spec-flow-studio",
+	"private": true,
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"format": "prettier --write .",
+		"lint": "prettier --check . && eslint ."
+	},
+	"devDependencies": {
+		"@eslint/compat": "^1.4.0",
+		"@eslint/js": "^9.39.1",
+		"@sveltejs/adapter-auto": "^7.0.0",
+		"@sveltejs/kit": "^2.49.1",
+		"@sveltejs/vite-plugin-svelte": "^6.2.1",
+		"@types/js-yaml": "^4.0.9",
+		"@types/node": "^22",
+		"eslint": "^9.39.1",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-svelte": "^3.13.1",
+		"globals": "^16.5.0",
+		"prettier": "^3.7.4",
+		"prettier-plugin-svelte": "^3.4.0",
+		"svelte": "^5.45.6",
+		"svelte-check": "^4.3.4",
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.48.1",
+		"vite": "^7.2.6"
+	},
+	"dependencies": {
+		"@codemirror/lang-yaml": "^6.1.2",
+		"@codemirror/state": "^6.5.4",
+		"@codemirror/theme-one-dark": "^6.1.3",
+		"@codemirror/view": "^6.39.11",
+		"@google/generative-ai": "^0.24.1",
+		"codemirror": "^6.0.2",
+		"js-yaml": "^4.1.1",
+		"mermaid": "^11.12.2"
+	}
+}
+</file>
+
+<file path="docs/task.md">
+# Phase 3.5: AI生成拡張 タスクリスト
+
+## 概要
+Phase 3で実装したAI生成エンジンを拡張。追加の生成タイプ（テストケース、ユースケース図）、エージェント間通信の可視化を実装。
+
+---
+
+## タスク
+
+### 3.5.1 追加生成タイプ
+- [x] テストケース用プロンプト追加 (`prompt-utils.ts`)
+- [x] ユースケース図(Mermaid)用プロンプト追加
+- [x] 生成タイプ選択に新オプションを追加
+- [x] APIエンドポイント更新 (`/api/generate`)
+
+### 3.5.2 エージェント間通信図
+- [x] `buildCommunicationDiagram()` - Specから直接Mermaid図を生成
+- [x] MermaidDiagramコンポーネント作成
+- [x] エディタサイドバーに通信図パネル追加
+
+### 3.5.3 ストリーミングレスポンス対応 (TODO)
+- [ ] `/api/generate` をストリーミング対応に変更
+- [ ] 生成モーダルにプログレス表示を追加
+
+---
+
+## 進捗
+- 開始日: 2026-01-16
+- 完了日: 2026-01-16
+- 状態: **完了** (ストリーミングは別途実装予定)
+- 成果物: `prompt-utils.ts`, `MermaidDiagram.svelte`, `editor/+page.svelte`
+</file>
+
+<file path="src/routes/editor/+page.svelte">
+<!--
+  Editor Page
+  Spec-Kit エディタの実装
+-->
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { Panel, Button, StatusIndicator } from '$lib/components/ui';
+	import { SpecEditor, ConstraintPanel } from '$lib/components/editor';
+	import MermaidDiagram from '$lib/components/MermaidDiagram.svelte';
+	import {
+		parseSpecYaml,
+		getYamlErrors,
+		AGENT_TEMPLATE,
+		ANALYZER_TEMPLATE
+	} from '$lib/utils/yaml-utils';
+	import { saveSpecYaml, loadSpecYaml, loadFromStorage } from '$lib/utils/storage-utils';
+	import { setSpecs, specs } from '$lib/stores/spec-store';
+	import { settings } from '$lib/stores/settings-store';
+	import { session } from '$lib/stores/session-store';
+	import { decryptData } from '$lib/utils/crypto-utils';
+	import { addArtifact } from '$lib/stores/artifact-store';
+	import { historyStore, canUndo, canRedo } from '$lib/stores/history-store';
+	import { stringifyYaml } from '$lib/utils/yaml-utils';
+	import { buildCommunicationDiagram } from '$lib/utils/prompt-utils';
+	import type { YamlError } from '$lib/utils/yaml-utils';
+	import type { ArtifactType, AgentSpec } from '$lib/types';
+	import { goto } from '$app/navigation';
+
+	// 状態
+	let yamlContent = $state('');
+	let yamlErrors = $state<YamlError[]>([]);
+	let isDirty = $state(false);
+	let currentTemplate = $state('default');
+
+	// 生成モーダル状態
+	let showGenerateModal = $state(false);
+	let isGenerating = $state(false);
+	let selectedArtifactType = $state<ArtifactType>('ui-mock');
+	let tempPassword = $state(''); // セッションにない場合の一時入力用
+
+	// 履歴管理用の状態
+	let previousSpecs = $state<AgentSpec[]>([]);
+	let commitName = $state('');
+
+	// 初期化
+	onMount(() => {
+		const saved = loadSpecYaml();
+		if (saved.yaml) {
+			yamlContent = saved.yaml;
+			validateYaml(saved.yaml);
+			// 履歴の初期化
+			historyStore.initialize($specs);
+			previousSpecs = [...$specs];
+		} else {
+			yamlContent = AGENT_TEMPLATE;
+			validateYaml(AGENT_TEMPLATE);
+		}
+	});
+
+	// YAMLの検証とパース
+	function validateYaml(content: string) {
+		const errors = getYamlErrors(content);
+		yamlErrors = errors;
+
+		if (errors.length === 0) {
+			try {
+				const parsedSpecs = parseSpecYaml(content);
+				setSpecs(parsedSpecs, 'draft-spec'); // ストア更新
+			} catch (e) {
+				console.error('Spec parse error:', e);
+			}
+		}
+	}
+
+	// エディタ変更ハンドラ
+	function handleChange(newContent: string) {
+		yamlContent = newContent;
+		isDirty = true;
+		validateYaml(newContent);
+		// 自動保存 (簡易)
+		saveSpecYaml(newContent, 'draft-spec');
+	}
+
+	// テンプレート適用
+	function applyTemplate() {
+		if (confirm('現在の内容を上書きしてテンプレートを適用しますか？')) {
+			if (currentTemplate === 'analyzer') {
+				yamlContent = ANALYZER_TEMPLATE;
+			} else {
+				yamlContent = AGENT_TEMPLATE;
+			}
+			validateYaml(yamlContent);
+			saveSpecYaml(yamlContent, 'draft-spec');
+			isDirty = false;
+			previousSpecs = [...$specs];
+		}
+	}
+
+	// コミット（履歴に記録）
+	function handleCommit() {
+		if (yamlErrors.length > 0) {
+			alert('YAMLエラーがあります。修正してからコミットしてください。');
+			return;
+		}
+
+		const patch = historyStore.commit(previousSpecs, $specs, commitName || undefined);
+		if (patch) {
+			previousSpecs = [...$specs];
+			isDirty = false;
+			commitName = '';
+			alert(`変更を記録しました: ${patch.spec.summary}`);
+		} else {
+			alert('変更がありません');
+		}
+	}
+
+	// Undo
+	function handleUndo() {
+		const newSpecs = historyStore.undo();
+		if (newSpecs) {
+			setSpecs(newSpecs, 'draft-spec');
+			yamlContent = stringifyYaml(newSpecs);
+			saveSpecYaml(yamlContent, 'draft-spec');
+			previousSpecs = [...newSpecs];
+		}
+	}
+
+	// Redo
+	function handleRedo() {
+		const newSpecs = historyStore.redo();
+		if (newSpecs) {
+			setSpecs(newSpecs, 'draft-spec');
+			yamlContent = stringifyYaml(newSpecs);
+			saveSpecYaml(yamlContent, 'draft-spec');
+			previousSpecs = [...newSpecs];
+		}
+	}
+
+	// 生成処理の開始
+	function startGeneration() {
+		if ($specs.length === 0) {
+			alert('有効なエージェント仕様がありません');
+			return;
+		}
+		if (!$settings.hasApiKey) {
+			alert('APIキーが設定されていません。設定ページで設定してください。');
+			goto('/settings');
+			return;
+		}
+		showGenerateModal = true;
+	}
+
+	// Artifact生成実行
+	async function handleGenerate() {
+		// APIキーの取得（復号化）
+		let apiKey = '';
+		try {
+			const password = $session.encryptionPassword || tempPassword;
+			if (!password) {
+				alert('APIキーの保護パスワードを入力してください');
+				return;
+			}
+
+			const encryptedKey = loadFromStorage('spec-flow-studio:api-key-encrypted', '');
+			if (!encryptedKey) {
+				throw new Error('暗号化されたAPIキーが見つかりません');
+			}
+
+			// 復号化試行
+			apiKey = await decryptData(encryptedKey, password);
+
+			// 成功したらセッションにパスワード保存
+			if (!$session.encryptionPassword) {
+				session.setPassword(password);
+			}
+		} catch (error) {
+			console.error(error);
+			alert('パスワードが間違っているか、復号化に失敗しました');
+			return;
+		}
+
+		isGenerating = true;
+		try {
+			// 最初のAgentSpecを使用（複数対応は今後）
+			const targetSpec = $specs[0];
+
+			const response = await fetch('/api/generate', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'x-api-key': apiKey
+				},
+				body: JSON.stringify({
+					spec: targetSpec,
+					artifactType: selectedArtifactType,
+					model: $settings.geminiModel
+				})
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Generation failed');
+			}
+
+			const { content } = await response.json();
+
+			// Artifactストアに追加
+			addArtifact({
+				id: crypto.randomUUID(),
+				type: selectedArtifactType,
+				name: `${targetSpec.displayName} - ${selectedArtifactType}`,
+				content: content,
+				generatedAt: new Date().toISOString(),
+				specId: targetSpec.name
+			});
+
+			showGenerateModal = false;
+			alert('生成が完了しました！ビューアで確認できます。');
+			goto('/viewer'); // ビューアへ遷移
+		} catch (error) {
+			console.error('Generation error:', error);
+			alert(`生成エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
+		} finally {
+			isGenerating = false;
+			tempPassword = '';
+		}
+	}
+</script>
+
+<div class="editor-page">
+	<header class="editor-header">
+		<div class="header-left">
+			<h1>Spec Editor</h1>
+			<StatusIndicator
+				status={yamlErrors.length === 0 ? 'success' : 'error'}
+				label={yamlErrors.length === 0 ? 'Valid Spec' : `${yamlErrors.length} Errors`}
+			/>
+		</div>
+		<div class="header-right">
+			<select bind:value={currentTemplate} class="template-select" title="テンプレート選択">
+				<option value="default">Default Template</option>
+				<option value="analyzer">Analyzer Agent</option>
+			</select>
+			<Button variant="secondary" size="sm" onclick={applyTemplate}>Load Template</Button>
+			<Button variant="ghost" size="sm" onclick={handleUndo} disabled={!$canUndo} title="元に戻す"
+				>↶</Button
+			>
+			<Button variant="ghost" size="sm" onclick={handleRedo} disabled={!$canRedo} title="やり直す"
+				>↷</Button
+			>
+			<Button
+				variant="primary"
+				size="sm"
+				onclick={handleCommit}
+				disabled={yamlErrors.length > 0 || !isDirty}>📝 コミット</Button
+			>
+			<Button
+				variant="accent"
+				size="sm"
+				disabled={yamlErrors.length > 0 || isGenerating}
+				onclick={startGeneration}
+			>
+				✨ Generate Artifacts
+			</Button>
+		</div>
+	</header>
+
+	<div class="editor-layout">
+		<!-- 左側: YAMLエディタ -->
+		<div class="editor-main">
+			<SpecEditor bind:value={yamlContent} onChange={handleChange} />
+		</div>
+
+		<!-- 右側: プレビュー & 情報 -->
+		<div class="editor-sidebar">
+			<!-- 制約パネル -->
+			<div class="sidebar-section">
+				<ConstraintPanel specs={$specs} />
+			</div>
+
+			<!-- エラーパネル (エラー時のみ表示) -->
+			{#if yamlErrors.length > 0}
+				<div class="sidebar-section">
+					<Panel title="YAML Errors" variant="error" glow>
+						<ul class="error-list">
+							{#each yamlErrors as error}
+								<li class="error-item">
+									<span class="error-line">Line {error.line + 1}:</span>
+									<span class="error-msg">{error.message}</span>
+								</li>
+							{/each}
+						</ul>
+					</Panel>
+				</div>
+			{/if}
+
+			<!-- パース結果プレビュー (簡易) -->
+			<div class="sidebar-section spec-preview">
+				<Panel title="Structure Preview">
+					<div class="preview-content">
+						{#each $specs as agent}
+							<div class="agent-preview">
+								<span class="agent-icon"
+									>{#if agent.role.includes('解析') || agent.displayName.includes('Analyzer')}🔍{:else}🤖{/if}</span
+								>
+								<span class="agent-name">{agent.displayName}</span>
+							</div>
+						{/each}
+						{#if $specs.length === 0 && yamlErrors.length === 0}
+							<p class="text-muted text-center text-sm">No valid agents found</p>
+						{/if}
+					</div>
+				</Panel>
+			</div>
+
+			<!-- 通信図パネル -->
+			{#if $specs.length > 0}
+				<div class="sidebar-section">
+					<Panel title="Communication">
+						<MermaidDiagram code={buildCommunicationDiagram($specs)} id="comm-diagram" />
+					</Panel>
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- 生成モーダル -->
+	{#if showGenerateModal}
+		<div class="modal-backdrop">
+			<div class="modal">
+				<h2 class="modal-title">Generate Artifacts</h2>
+
+				<div class="modal-body">
+					<div class="form-group">
+						<label for="artifactType">生成タイプ</label>
+						<select id="artifactType" bind:value={selectedArtifactType} class="form-select">
+							<option value="ui-mock">UI Mock (HTML/Tailwind)</option>
+							<option value="api-spec">API Specification (OpenAPI)</option>
+							<option value="test-case">Test Cases (Markdown)</option>
+							<option value="use-case-diagram">Use Case Diagram (Mermaid)</option>
+						</select>
+					</div>
+
+					{#if !$session.encryptionPassword}
+						<div class="form-group">
+							<label for="password">暗号化パスワード</label>
+							<input
+								id="password"
+								type="password"
+								bind:value={tempPassword}
+								placeholder="APIキー保護パスワードを入力"
+								class="form-input"
+							/>
+							<p class="help-text">APIキーを復号化するために必要です。</p>
+						</div>
+					{/if}
+
+					<div class="modal-info">
+						<p>対象: <strong>{$specs[0]?.displayName || 'Agent'}</strong></p>
+						<p>モデル: <strong>{$settings.geminiModel}</strong></p>
+					</div>
+				</div>
+
+				<div class="modal-footer">
+					<Button variant="ghost" onclick={() => (showGenerateModal = false)}>キャンセル</Button>
+					<Button
+						variant="accent"
+						loading={isGenerating}
+						disabled={isGenerating || (!$session.encryptionPassword && !tempPassword)}
+						onclick={handleGenerate}
+					>
+						生成開始
+					</Button>
+				</div>
+			</div>
+		</div>
+	{/if}
+</div>
+
+<style>
+	.editor-page {
+		height: calc(100vh - var(--header-height)); /* 調整 */
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		animation: fade-in var(--transition-base) ease-out;
+		position: relative;
+	}
+
+	.editor-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		height: var(--space-10);
+	}
+
+	.header-left {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+	}
+
+	.header-right {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.template-select {
+		padding: var(--space-2) var(--space-3);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-md);
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: var(--font-size-sm);
+	}
+
+	.editor-layout {
+		flex: 1;
+		display: grid;
+		grid-template-columns: 1fr 300px;
+		gap: var(--space-4);
+		min-height: 0; /* Grid overflow対策 */
+	}
+
+	.editor-main {
+		height: 100%;
+		min-height: 0;
+	}
+
+	.editor-sidebar {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		overflow-y: auto;
+		height: 100%;
+	}
+
+	.sidebar-section {
+		flex-shrink: 0;
+	}
+
+	/* Errors */
+	.error-list {
+		list-style: none;
+		font-size: var(--font-size-xs);
+		color: var(--color-accent-error);
+	}
+
+	.error-item {
+		margin-bottom: var(--space-2);
+		padding-bottom: var(--space-2);
+		border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+	}
+
+	.error-item:last-child {
+		border-bottom: none;
+		margin-bottom: 0;
+		padding-bottom: 0;
+	}
+
+	.error-line {
+		font-weight: bold;
+		margin-right: var(--space-2);
+	}
+
+	/* Preview */
+	.preview-content {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.agent-preview {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2);
+		background: var(--color-bg-primary);
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-border-secondary);
+	}
+
+	.agent-name {
+		font-size: var(--font-size-sm);
+		font-weight: 500;
+	}
+
+	/* Responsive */
+	@media (max-width: 1024px) {
+		.editor-layout {
+			grid-template-columns: 1fr;
+			grid-template-rows: 1fr auto;
+		}
+
+		.editor-sidebar {
+			height: auto;
+			max-height: 300px;
+		}
+	}
+
+	/* Modal */
+	.modal-backdrop {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background: rgba(0, 0, 0, 0.7);
+		backdrop-filter: blur(4px);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 1000;
+	}
+
+	.modal {
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-lg);
+		padding: var(--space-6);
+		width: 100%;
+		max-width: 400px;
+		box-shadow: var(--shadow-xl);
+	}
+
+	.modal-title {
+		font-size: var(--font-size-lg);
+		font-weight: 600;
+		margin-bottom: var(--space-4);
+		color: var(--color-text-primary);
+	}
+
+	.modal-body {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-4);
+		margin-bottom: var(--space-6);
+	}
+
+	.form-select,
+	.form-input {
+		width: 100%;
+		padding: var(--space-3);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-md);
+		color: var(--color-text-primary);
+		font-size: var(--font-size-sm);
+	}
+
+	.help-text {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		margin-top: var(--space-1);
+	}
+
+	.modal-info {
+		padding: var(--space-3);
+		background: rgba(0, 212, 255, 0.1);
+		border-radius: var(--radius-md);
+		font-size: var(--font-size-sm);
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+	}
+
+	.modal-footer {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2);
+	}
+</style>
+</file>
+
+</files>

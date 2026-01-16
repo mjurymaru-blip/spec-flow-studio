@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateContent } from '$lib/server/gemini';
-import { buildUiPrompt, buildApiPrompt } from '$lib/utils/prompt-utils';
+import { buildUiPrompt, buildApiPrompt, buildTestCasePrompt, buildUseCasePrompt } from '$lib/utils/prompt-utils';
 import type { AgentSpec } from '$lib/types';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -12,8 +12,9 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     try {
-        const { spec, artifactType, model } = await request.json();
+        const { spec, specs, artifactType, model } = await request.json();
         const agentSpec = spec as AgentSpec;
+        const agentSpecs = specs as AgentSpec[] | undefined;
 
         let prompt = '';
 
@@ -23,6 +24,15 @@ export const POST: RequestHandler = async ({ request }) => {
                 break;
             case 'api-spec':
                 prompt = buildApiPrompt(agentSpec);
+                break;
+            case 'test-case':
+                prompt = buildTestCasePrompt(agentSpec);
+                break;
+            case 'use-case-diagram':
+                if (!agentSpecs || agentSpecs.length === 0) {
+                    return json({ error: 'Multiple specs required for use-case diagram' }, { status: 400 });
+                }
+                prompt = buildUseCasePrompt(agentSpecs);
                 break;
             default:
                 return json({ error: 'Invalid artifact type' }, { status: 400 });
@@ -37,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
         // コードブロックの除去 (```html ... ``` -> ...)
         let content = result;
         // Markdownコードブロック除去の簡易正規表現
-        const codeBlockRegex = /^```(?:html|yaml|json)?\s*([\s\S]*?)```$/;
+        const codeBlockRegex = /^```(?:html|yaml|json|markdown|mermaid)?\s*([\s\S]*?)```$/;
         const match = content.match(codeBlockRegex);
         if (match) {
             content = match[1].trim();

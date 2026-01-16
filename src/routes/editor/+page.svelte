@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import { Panel, Button, StatusIndicator } from '$lib/components/ui';
 	import { SpecEditor, ConstraintPanel } from '$lib/components/editor';
+	import MermaidDiagram from '$lib/components/MermaidDiagram.svelte';
 	import {
 		parseSpecYaml,
 		getYamlErrors,
@@ -20,6 +21,7 @@
 	import { addArtifact } from '$lib/stores/artifact-store';
 	import { historyStore, canUndo, canRedo } from '$lib/stores/history-store';
 	import { stringifyYaml } from '$lib/utils/yaml-utils';
+	import { buildCommunicationDiagram } from '$lib/utils/prompt-utils';
 	import type { YamlError } from '$lib/utils/yaml-utils';
 	import type { ArtifactType, AgentSpec } from '$lib/types';
 	import { goto } from '$app/navigation';
@@ -310,6 +312,15 @@
 					</div>
 				</Panel>
 			</div>
+
+			<!-- 通信図パネル -->
+			{#if $specs.length > 0}
+				<div class="sidebar-section">
+					<Panel title="Communication">
+						<MermaidDiagram code={buildCommunicationDiagram($specs)} id="comm-diagram" />
+					</Panel>
+				</div>
+			{/if}
 		</div>
 	</div>
 
@@ -325,6 +336,8 @@
 						<select id="artifactType" bind:value={selectedArtifactType} class="form-select">
 							<option value="ui-mock">UI Mock (HTML/Tailwind)</option>
 							<option value="api-spec">API Specification (OpenAPI)</option>
+							<option value="test-case">Test Cases (Markdown)</option>
+							<option value="use-case-diagram">Use Case Diagram (Mermaid)</option>
 						</select>
 					</div>
 
