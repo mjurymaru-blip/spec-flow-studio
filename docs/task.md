@@ -1,47 +1,28 @@
-# Phase 5: レビュー指摘対応 タスクリスト
+# Phase 6: WebSocket統合テスト タスクリスト
 
 ## 概要
-ChatGPT / Gemini によるコードレビュー結果を元に、改善を実施。
+Spec-Flow Studio と Aether Console のWebSocket接続を検証。
 
 ---
 
-## 即時対応タスク
+## タスク
 
-### 5.1 Mermaidデバウンス
-- [x] エディタ入力ごとの再描画を防ぐ
-- [x] 300ms のデバウンス追加
+### 6.1 接続確認
+- [/] Aether Console のWebSocketエンドポイント確認
+- [ ] Spec-Flow Studio の設定ページで接続設定
+- [ ] 接続状態の確認（StatusIndicator）
 
-### 5.2 constraints UI強調
-- [x] ConstraintPanelの視覚的強調（赤枠・警告アイコン・パルスアニメーション）
-- [x] 「この制約を破る生成は破棄されます」のメッセージ追加
+### 6.2 メッセージ送受信テスト
+- [ ] SPEC_UPDATED メッセージ送信
+- [ ] PATCH_CREATED メッセージ送信
+- [ ] SYNC_REQUEST / SYNC_RESPONSE テスト
 
----
-
-## 将来対応タスク (Backlog)
-
-### 5.3 integration-store 責務分離
-- [ ] connection-store.ts (接続状態)
-- [ ] event-store.ts (受信イベント)
-- [ ] sync-controller.ts (同期ロジック)
-
-### 5.4 履歴フィルタリング
-- [ ] エージェント名でのパッチ絞り込み
-
-### 5.5 IndexedDB移行
-- [ ] localStorage → IndexedDB への移行
-- [ ] 大容量Artifactのサポート
-
-### 5.6 Gemini API Proxy化
-- [ ] Edge Functionでの薄いProxy実装
-- [ ] レート制限 (IP/Session)
-- [ ] プロンプト検証
-
-### 5.7 Swagger UI統合
-- [ ] OpenAPI仕様のビジュアルビューア
+### 6.3 UI統合
+- [ ] ステータスバーに接続状態表示
+- [ ] 自動再接続の動作確認
 
 ---
 
 ## 進捗
 - 開始日: 2026-01-16
-- 完了日: 2026-01-16
-- 状態: **完了** (即時対応分)
+- 状態: **実装中**
