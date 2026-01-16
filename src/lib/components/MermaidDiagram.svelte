@@ -41,10 +41,18 @@
 		}
 	});
 
-	// codeが変更されたら再レンダリング
+	// codeが変更されたら再レンダリング（デバウンス付き）
+	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 	$effect(() => {
 		if (code && container) {
-			(async () => {
+			// 前回のタイマーをクリア
+			if (debounceTimer) {
+				clearTimeout(debounceTimer);
+			}
+
+			// 300msのデバウンス
+			debounceTimer = setTimeout(async () => {
 				try {
 					const mermaid = await import('mermaid');
 					const uniqueId = `${id}-${Date.now()}`;
@@ -54,7 +62,7 @@
 				} catch (e) {
 					error = e instanceof Error ? e.message : 'Mermaid rendering failed';
 				}
-			})();
+			}, 300);
 		}
 	});
 </script>

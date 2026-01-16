@@ -1,6 +1,7 @@
 <!--
   ConstraintPanel Component
   制約事項（Constraints）を可視化・強調表示するパネル
+  ※ AIが従うべき「絶対条件」として視覚的に強調
 -->
 <script lang="ts">
 	import { Panel } from '$lib/components/ui';
@@ -24,12 +25,16 @@
 </script>
 
 <Panel
-	title="制約事項 (Constraints)"
-	variant="warning"
+	title="⚠️ 制約事項 (Constraints)"
+	variant="error"
 	glow={allConstraints.length > 0}
 	class="constraint-panel"
 >
 	{#if allConstraints.length > 0}
+		<div class="constraint-warning">
+			<span class="warning-icon">🚫</span>
+			<span class="warning-text">これらの制約を破る生成は破棄されます</span>
+		</div>
 		<div class="constraints-list">
 			{#each allConstraints as item}
 				<div class="constraint-item">
@@ -54,12 +59,44 @@
 		flex-direction: column;
 	}
 
+	.constraint-warning {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2) var(--space-3);
+		background: rgba(239, 68, 68, 0.2);
+		border: 1px solid var(--color-accent-error);
+		border-radius: var(--radius-sm);
+		margin-bottom: var(--space-3);
+		animation: pulse-warning 2s infinite;
+	}
+
+	@keyframes pulse-warning {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.7;
+		}
+	}
+
+	.warning-icon {
+		font-size: var(--font-size-lg);
+	}
+
+	.warning-text {
+		font-size: var(--font-size-xs);
+		font-weight: 600;
+		color: var(--color-accent-error);
+	}
+
 	.constraints-list {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
 		overflow-y: auto;
-		max-height: 200px; /* 必要に応じて調整 */
+		max-height: 200px;
 	}
 
 	.constraint-item {
@@ -67,15 +104,15 @@
 		align-items: flex-start;
 		gap: var(--space-3);
 		padding: var(--space-2) var(--space-3);
-		background: rgba(245, 158, 11, 0.1); /* Warning color alpha */
-		border-left: 3px solid var(--color-accent-warning);
+		background: rgba(239, 68, 68, 0.1);
+		border-left: 3px solid var(--color-accent-error);
 		border-radius: var(--radius-sm);
 	}
 
 	.constraint-agent {
 		font-size: var(--font-size-xs);
 		font-weight: 600;
-		color: var(--color-accent-warning);
+		color: var(--color-accent-error);
 		background: rgba(0, 0, 0, 0.3);
 		padding: 2px 6px;
 		border-radius: var(--radius-sm);

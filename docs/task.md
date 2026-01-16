@@ -1,31 +1,47 @@
-# Phase 3.5: AI生成拡張 タスクリスト
+# Phase 5: レビュー指摘対応 タスクリスト
 
 ## 概要
-Phase 3で実装したAI生成エンジンを拡張。追加の生成タイプ（テストケース、ユースケース図）、エージェント間通信の可視化を実装。
+ChatGPT / Gemini によるコードレビュー結果を元に、改善を実施。
 
 ---
 
-## タスク
+## 即時対応タスク
 
-### 3.5.1 追加生成タイプ
-- [x] テストケース用プロンプト追加 (`prompt-utils.ts`)
-- [x] ユースケース図(Mermaid)用プロンプト追加
-- [x] 生成タイプ選択に新オプションを追加
-- [x] APIエンドポイント更新 (`/api/generate`)
+### 5.1 Mermaidデバウンス
+- [x] エディタ入力ごとの再描画を防ぐ
+- [x] 300ms のデバウンス追加
 
-### 3.5.2 エージェント間通信図
-- [x] `buildCommunicationDiagram()` - Specから直接Mermaid図を生成
-- [x] MermaidDiagramコンポーネント作成
-- [x] エディタサイドバーに通信図パネル追加
+### 5.2 constraints UI強調
+- [x] ConstraintPanelの視覚的強調（赤枠・警告アイコン・パルスアニメーション）
+- [x] 「この制約を破る生成は破棄されます」のメッセージ追加
 
-### 3.5.3 ストリーミングレスポンス対応 (TODO)
-- [ ] `/api/generate` をストリーミング対応に変更
-- [ ] 生成モーダルにプログレス表示を追加
+---
+
+## 将来対応タスク (Backlog)
+
+### 5.3 integration-store 責務分離
+- [ ] connection-store.ts (接続状態)
+- [ ] event-store.ts (受信イベント)
+- [ ] sync-controller.ts (同期ロジック)
+
+### 5.4 履歴フィルタリング
+- [ ] エージェント名でのパッチ絞り込み
+
+### 5.5 IndexedDB移行
+- [ ] localStorage → IndexedDB への移行
+- [ ] 大容量Artifactのサポート
+
+### 5.6 Gemini API Proxy化
+- [ ] Edge Functionでの薄いProxy実装
+- [ ] レート制限 (IP/Session)
+- [ ] プロンプト検証
+
+### 5.7 Swagger UI統合
+- [ ] OpenAPI仕様のビジュアルビューア
 
 ---
 
 ## 進捗
 - 開始日: 2026-01-16
 - 完了日: 2026-01-16
-- 状態: **完了** (ストリーミングは別途実装予定)
-- 成果物: `prompt-utils.ts`, `MermaidDiagram.svelte`, `editor/+page.svelte`
+- 状態: **完了** (即時対応分)
