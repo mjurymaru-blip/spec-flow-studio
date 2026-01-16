@@ -18,8 +18,10 @@
 	import { session } from '$lib/stores/session-store';
 	import { decryptData } from '$lib/utils/crypto-utils';
 	import { addArtifact } from '$lib/stores/artifact-store';
+	import { historyStore, canUndo, canRedo } from '$lib/stores/history-store';
+	import { stringifyYaml } from '$lib/utils/yaml-utils';
 	import type { YamlError } from '$lib/utils/yaml-utils';
-	import type { ArtifactType } from '$lib/types';
+	import type { ArtifactType, AgentSpec } from '$lib/types';
 	import { goto } from '$app/navigation';
 
 	// 状態
@@ -34,12 +36,19 @@
 	let selectedArtifactType = $state<ArtifactType>('ui-mock');
 	let tempPassword = $state(''); // セッションにない場合の一時入力用
 
+	// 履歴管理用の状態
+	let previousSpecs = $state<AgentSpec[]>([]);
+	let commitName = $state('');
+
 	// 初期化
 	onMount(() => {
 		const saved = loadSpecYaml();
 		if (saved.yaml) {
 			yamlContent = saved.yaml;
 			validateYaml(saved.yaml);
+			// 履歴の初期化
+			historyStore.initialize($specs);
+			previousSpecs = [...$specs];
 		} else {
 			yamlContent = AGENT_TEMPLATE;
 			validateYaml(AGENT_TEMPLATE);
@@ -81,6 +90,47 @@
 			validateYaml(yamlContent);
 			saveSpecYaml(yamlContent, 'draft-spec');
 			isDirty = false;
+			previousSpecs = [...$specs];
+		}
+	}
+
+	// コミット（履歴に記録）
+	function handleCommit() {
+		if (yamlErrors.length > 0) {
+			alert('YAMLエラーがあります。修正してからコミットしてください。');
+			return;
+		}
+
+		const patch = historyStore.commit(previousSpecs, $specs, commitName || undefined);
+		if (patch) {
+			previousSpecs = [...$specs];
+			isDirty = false;
+			commitName = '';
+			alert(`変更を記録しました: ${patch.spec.summary}`);
+		} else {
+			alert('変更がありません');
+		}
+	}
+
+	// Undo
+	function handleUndo() {
+		const newSpecs = historyStore.undo();
+		if (newSpecs) {
+			setSpecs(newSpecs, 'draft-spec');
+			yamlContent = stringifyYaml(newSpecs);
+			saveSpecYaml(yamlContent, 'draft-spec');
+			previousSpecs = [...newSpecs];
+		}
+	}
+
+	// Redo
+	function handleRedo() {
+		const newSpecs = historyStore.redo();
+		if (newSpecs) {
+			setSpecs(newSpecs, 'draft-spec');
+			yamlContent = stringifyYaml(newSpecs);
+			saveSpecYaml(yamlContent, 'draft-spec');
+			previousSpecs = [...newSpecs];
 		}
 	}
 
@@ -190,6 +240,18 @@
 				<option value="analyzer">Analyzer Agent</option>
 			</select>
 			<Button variant="secondary" size="sm" onclick={applyTemplate}>Load Template</Button>
+			<Button variant="ghost" size="sm" onclick={handleUndo} disabled={!$canUndo} title="元に戻す"
+				>↶</Button
+			>
+			<Button variant="ghost" size="sm" onclick={handleRedo} disabled={!$canRedo} title="やり直す"
+				>↷</Button
+			>
+			<Button
+				variant="primary"
+				size="sm"
+				onclick={handleCommit}
+				disabled={yamlErrors.length > 0 || !isDirty}>📝 コミット</Button
+			>
 			<Button
 				variant="accent"
 				size="sm"

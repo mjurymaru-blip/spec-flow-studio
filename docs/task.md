@@ -1,37 +1,41 @@
 # Phase 4: Diff Management & Integration タスクリスト
 
 ## 概要
-Spec-Kitの核心である「Diff駆動開発」の中核機能を実装。エージェント仕様のDesired（あるべき姿）とActual（現状）の差分を検出し、SpecPatch形式で管理する。また、Aether ConsoleとのWebSocket統合を完成させる。
+Spec-Kitの核心である「Diff駆動開発」の中核機能を実装。エージェント仕様のDesired（あるべき姿）とActual（現状）の差分を検出し、SpecPatch形式で管理する。
 
 ---
 
 ## タスク
 
-### 4.1 SpecPatch 実装 (Hybrid Format)
-- [ ] SpecPatch 生成ロジック (`diff-utils.ts`)
-  - 構造的差分 (JSON Patch like) の検出
-  - 自然言語要約の生成 (AI支援)
-- [ ] パッチ適用ロジック
-- [ ] ロールバック機能
+### 4.1 Diffエンジン (diff-utils.ts)
+- [x] `generateSpecPatch()` - 差分検出ロジック
+- [x] `applySpecPatch()` - パッチ適用ロジック
+- [x] `revertSpecPatch()` - ロールバック用
 
-### 4.2 履歴管理 (Time Travel)
-- [ ] 履歴ストア拡張 (`history-store.ts`)
-- [ ] 履歴ビューアページ (`/history`) 実装
-  - タイムライン表示
-  - バージョン間の差分可視化
+### 4.2 履歴管理 (history-store.ts)
+- [x] パッチタイムラインの保存
+- [x] Undo / Redo アクション
+- [x] localStorage への永続化
 
-### 4.3 Aether Console 統合 (WebSocket)
-- [ ] WebSocket クライアント実装 (`websocket.ts`)
-- [ ] Aether Console へのパッチ送信
-- [ ] Aether Console からの状態受信 (Actual State)
+### 4.3 履歴UI (history/+page.svelte)
+- [x] タイムライン表示
+- [x] パッチ詳細表示
+- [x] 「このバージョンに戻す」ボタン
 
-### 4.4 統合テスト & Polish
-- [ ] E2Eテストシナリオ
-- [ ] UI/UXの最終調整
+### 4.4 エディタ連携 (editor/+page.svelte)
+- [x] 「コミット」ボタン追加
+- [x] Undo/Redo ボタン追加
+- [x] history-store との連携
+
+### 4.5 WebSocket統合 (websocket.ts)
+- [x] WebSocket クライアント実装
+- [x] Aether Console へのパッチ送信機能
+- [x] 状態受信ハンドラ (Actual State)
 
 ---
 
 ## 進捗
 - 開始日: 2026-01-16
-- 完了予定: 1週間
-- 状態: **計画中**
+- 完了日: 2026-01-16
+- 状態: **完了**
+- 成果物: `diff-utils.ts`, `history-store.ts`, `history/+page.svelte`, `websocket.ts`
