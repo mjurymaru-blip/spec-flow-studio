@@ -1,12 +1,13 @@
 <!--
   StatusBar Component
-  画面下部のステータスバー
+  画面下部のステータスバー（WebSocket接続状態を含む）
 -->
 <script lang="ts">
 	import { StatusIndicator } from '$lib/components/ui';
 	import { connectionStatus } from '$lib/stores/integration-store';
 	import { specCount } from '$lib/stores/spec-store';
 	import { artifacts } from '$lib/stores/artifact-store';
+	import { wsStatus } from '$lib/services/websocket';
 
 	// 接続状態をStatusIndicatorのstatus形式に変換
 	const statusMap = {
@@ -16,13 +17,36 @@
 		error: 'error'
 	} as const;
 
+	// 接続状態ラベル
+	const statusLabelMap = {
+		disconnected: 'Disconnected',
+		connecting: 'Connecting...',
+		connected: 'Connected',
+		error: 'Error'
+	} as const;
+
 	let currentStatus = $derived(statusMap[$connectionStatus]);
+	let statusLabel = $derived(statusLabelMap[$wsStatus]);
 	let artifactCount = $derived($artifacts.length);
+	
+	// 時刻更新
+	let currentTime = $state(new Date());
+	$effect(() => {
+		const interval = setInterval(() => {
+			currentTime = new Date();
+		}, 1000);
+		return () => clearInterval(interval);
+	});
 </script>
 
 <footer class="statusbar">
 	<div class="statusbar__left">
-		<StatusIndicator status={currentStatus} size="sm" pulse={$connectionStatus === 'connected'} />
+		<div class="statusbar__connection">
+			<StatusIndicator status={currentStatus} size="sm" pulse={$wsStatus === 'connected'} />
+			<span class="statusbar__connection-label" class:connected={$wsStatus === 'connected'}>
+				{statusLabel}
+			</span>
+		</div>
 	</div>
 
 	<div class="statusbar__center">
@@ -39,7 +63,7 @@
 
 	<div class="statusbar__right">
 		<span class="statusbar__time font-mono">
-			{new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+			{currentTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
 		</span>
 	</div>
 </footer>
@@ -65,6 +89,22 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-3);
+	}
+
+	.statusbar__connection {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.statusbar__connection-label {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+		transition: color var(--transition-fast);
+	}
+
+	.statusbar__connection-label.connected {
+		color: var(--color-accent-success);
 	}
 
 	.statusbar__center {
