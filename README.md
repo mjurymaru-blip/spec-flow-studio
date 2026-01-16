@@ -1,38 +1,48 @@
-# sv
+# Spec-Flow Studio
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+AI Agent Specification Editor with Diff Management — Companion tool for [Aether Console](https://github.com/mjurymaru-blip/aether-console).
 
-## Creating a project
+## Overview
 
-If you're seeing this, you've probably already done this step. Congrats!
+Spec-Flow Studio is a **YAML-based specification editor** for defining AI agent behaviors. It enables:
 
-```sh
-# create a new project in the current directory
-npx sv create
+- 📝 **Spec-Kit Editor** — Edit agent specifications with syntax highlighting
+- 🔍 **Constraint Visualization** — Highlight constraints that govern AI behavior
+- ✨ **AI Artifact Generation** — Generate UI mocks, API specs, test cases via Gemini API
+- 📊 **Communication Diagrams** — Visualize agent interactions with Mermaid
+- 🔄 **Diff Management** — Track specification changes with version history
+- 🔌 **WebSocket Integration** — Real-time sync with Aether Console
 
-# create a new project in my-app
-npx sv create my-app
-```
+## Tech Stack
 
-## Developing
+- **Framework**: SvelteKit + Svelte 5 (Runes)
+- **Editor**: CodeMirror 6
+- **Diagrams**: Mermaid
+- **AI**: Google Gemini API
+- **Real-time**: WebSocket (ws)
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Getting Started
 
-```sh
+```bash
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
+# Build for production
 npm run build
 ```
 
-You can preview the production build with `npm run preview`.
+## Integration with Aether Console
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+Spec-Flow Studio connects to Aether Console via WebSocket:
+
+```
+Aether Console (localhost:5173) ⟷ Spec-Flow Studio (localhost:3001)
+                                   WebSocket: ws://localhost:3001/api/ws
+```
+
+## License
+
+MIT
