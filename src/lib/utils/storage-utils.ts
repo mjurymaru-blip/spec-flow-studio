@@ -13,9 +13,15 @@ const STORAGE_KEYS = {
 } as const;
 
 /**
+ * ブラウザ環境かどうかを判定
+ */
+export const isBrowser = typeof window !== 'undefined';
+
+/**
  * ローカルストレージに保存
  */
 export function saveToStorage<T>(key: string, data: T): void {
+    if (!isBrowser) return;
     try {
         localStorage.setItem(key, JSON.stringify(data));
     } catch (error) {
@@ -27,6 +33,7 @@ export function saveToStorage<T>(key: string, data: T): void {
  * ローカルストレージから読み込み
  */
 export function loadFromStorage<T>(key: string, defaultValue: T): T {
+    if (!isBrowser) return defaultValue;
     try {
         const item = localStorage.getItem(key);
         if (item === null) {
@@ -43,6 +50,7 @@ export function loadFromStorage<T>(key: string, defaultValue: T): T {
  * ローカルストレージから削除
  */
 export function removeFromStorage(key: string): void {
+    if (!isBrowser) return;
     try {
         localStorage.removeItem(key);
     } catch (error) {

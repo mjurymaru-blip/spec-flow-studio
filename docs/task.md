@@ -78,13 +78,13 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 
 ### セキュリティ強化 (高優先度)
 - [x] WebSocket認証 (HMAC-SHA256トークン検証)
-- [ ] SSR時のStore漏洩リスク対策
+- [x] SSR時のStore漏洩リスク対策 (SSRオフで対応済み)
 - [ ] API CSRF対策
 
 ### UI/UX改善 (中優先度)
 - [x] Constraint → YAML行ジャンプ機能
 - [x] WebSocket接続状態のUI表示強化
-- [ ] 操作手順チュートリアル/GIF追加
+- [x] 操作手順チュートリアル/GIF追加
 
 ### パフォーマンス (中優先度)
 - [ ] 履歴のチェックポイント制 (大量パッチ対応)
@@ -92,6 +92,7 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 - [ ] WebSocketイベントのthrottle/debounce
 
 ### アーキテクチャ (低優先度)
+- [x] アーティファクトのlocalStorage永続化
 - [ ] integration-store責務分離 (connection/event/sync)
 - [ ] 履歴フィルタリング (エージェント別)
 - [ ] IndexedDB移行 (localStorage 5MB制限対策)

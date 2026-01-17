@@ -65,6 +65,7 @@ function verifyConnection(request: IncomingMessage): { valid: boolean; clientId?
 
 // ========================================
 // WebSocket Vite Plugin (開発環境用)
+// noServerモードでHMRとの競合を回避
 // ========================================
 function webSocketPlugin() {
 	return {
@@ -72,20 +73,28 @@ function webSocketPlugin() {
 		configureServer(server: ViteDevServer) {
 			if (!server.httpServer) return;
 
-			const wss = new WebSocketServer({
-				server: server.httpServer,
-				path: '/api/ws',
-				verifyClient: (info, callback) => {
-					const result = verifyConnection(info.req);
+			// noServerモードでWebSocketServerを作成
+			const wss = new WebSocketServer({ noServer: true });
+
+			// upgradeイベントでWebSocket接続を処理
+			server.httpServer.on('upgrade', (request, socket, head) => {
+				const pathname = new URL(request.url || '', `http://${request.headers.host}`).pathname;
+
+				// /api/ws パスのみ処理（それ以外はVite HMRに渡す）
+				if (pathname === '/api/ws') {
+					const result = verifyConnection(request);
 					if (result.valid) {
-						// clientIdをリクエストに付与
-						(info.req as any).clientId = result.clientId;
-						callback(true);
+						(request as any).clientId = result.clientId;
+						wss.handleUpgrade(request, socket, head, (ws) => {
+							wss.emit('connection', ws, request);
+						});
 					} else {
 						console.log('[WebSocket] ❌ Connection rejected');
-						callback(false, 401, 'Unauthorized');
+						socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+						socket.destroy();
 					}
 				}
+				// それ以外はVite HMRが処理するのでスキップ
 			});
 
 			wss.on('connection', (ws, request) => {
@@ -128,7 +137,7 @@ function webSocketPlugin() {
 				});
 			});
 
-			console.log('[WebSocket] Server initialized on /api/ws');
+			console.log('[WebSocket] Server initialized on /api/ws (noServer mode)');
 			console.log('[WebSocket] Secret:', WS_SECRET.substring(0, 8) + '...');
 		}
 	};

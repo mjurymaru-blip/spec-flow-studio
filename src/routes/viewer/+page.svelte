@@ -3,7 +3,7 @@
   AI生成物ビューア (UI Mock / API Spec)
 -->
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { Panel, Button } from '$lib/components/ui';
 	import { artifacts, removeArtifact, latestArtifacts } from '$lib/stores/artifact-store';
 	import { SpecEditor } from '$lib/components/editor';
@@ -29,8 +29,11 @@
 
 	// 削除ハンドラ
 	function handleDelete(id: string) {
+		console.log('[Viewer] handleDelete called with id:', id);
 		if (confirm('この生成物を削除しますか？')) {
+			console.log('[Viewer] confirm returned true, calling removeArtifact');
 			removeArtifact(id);
+			console.log('[Viewer] removeArtifact called, artifacts count:', $artifacts.length);
 			if (selectedArtifactId === id) {
 				selectedArtifactId = null;
 			}
@@ -39,17 +42,36 @@
 
 	// UI Mock プレビュー用のBlob URL
 	let previewUrl = $state<string | null>(null);
+	let lastArtifactId: string | null = null;
 
+	// selectedArtifact の ID を追跡して previewUrl を更新
 	$effect(() => {
-		if (previewUrl) {
-			URL.revokeObjectURL(previewUrl);
+		const artifactId = selectedArtifact?.id ?? null;
+		const artifactType = selectedArtifact?.type;
+		const artifactContent = selectedArtifact?.content;
+
+		// IDが変わっていなければ何もしない（untrackで追跡対象から外す）
+		const shouldUpdate = untrack(() => artifactId !== lastArtifactId);
+		if (!shouldUpdate) {
+			return;
+		}
+
+		// 前のURLをクリーンアップ（untrackで追跡対象から外す）
+		untrack(() => {
+			if (previewUrl) {
+				URL.revokeObjectURL(previewUrl);
+			}
+		});
+
+		// 新しいURLを生成
+		if (artifactType === 'ui-mock' && artifactContent) {
+			const blob = new Blob([artifactContent], { type: 'text/html' });
+			previewUrl = URL.createObjectURL(blob);
+		} else {
 			previewUrl = null;
 		}
 
-		if (selectedArtifact && selectedArtifact.type === 'ui-mock') {
-			const blob = new Blob([selectedArtifact.content], { type: 'text/html' });
-			previewUrl = URL.createObjectURL(blob);
-		}
+		lastArtifactId = artifactId;
 	});
 
 	onDestroy(() => {
@@ -79,8 +101,10 @@
 						Code
 					</button>
 				</div>
-				<Button variant="danger" size="sm" onclick={() => handleDelete(selectedArtifact.id)}
-					>削除</Button
+				<Button
+					variant="danger"
+					size="sm"
+					onclick={() => selectedArtifact && handleDelete(selectedArtifact.id)}>削除</Button
 				>
 			</div>
 		{/if}

@@ -94,6 +94,7 @@
 			} else {
 				yamlContent = AGENT_TEMPLATE;
 			}
+
 			validateYaml(yamlContent);
 			saveSpecYaml(yamlContent, 'draft-spec');
 			isDirty = false;

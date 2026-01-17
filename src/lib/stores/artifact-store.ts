@@ -1,13 +1,30 @@
 /**
  * Artifact Store
  *
- * AI生成物を管理するストア
+ * AI生成物を管理するストア（localStorage永続化対応）
  */
 import { writable, derived } from 'svelte/store';
 import type { Artifact, ArtifactType } from '$lib/types';
+import { saveToStorage, loadFromStorage, isBrowser } from '$lib/utils/storage-utils';
+
+const STORAGE_KEY = 'spec-flow-studio:artifacts';
+
+// 初期データをlocalStorageから読み込み
+function loadInitialArtifacts(): Artifact[] {
+    if (!isBrowser) return [];
+    const stored = loadFromStorage<Artifact[]>(STORAGE_KEY, []);
+    return stored;
+}
 
 // 全ての生成物
-export const artifacts = writable<Artifact[]>([]);
+export const artifacts = writable<Artifact[]>(loadInitialArtifacts());
+
+// localStorageへの永続化（変更時に自動保存）
+if (isBrowser) {
+    artifacts.subscribe((value) => {
+        saveToStorage(STORAGE_KEY, value);
+    });
+}
 
 // 生成物が存在するかどうか
 export const hasArtifacts = derived(artifacts, ($artifacts) => $artifacts.length > 0);
@@ -18,7 +35,7 @@ export const artifactCounts = derived(artifacts, ($artifacts) => {
         'ui-mock': 0,
         'api-spec': 0,
         'test-case': 0,
-        'use-case': 0
+        'use-case-diagram': 0
     };
     $artifacts.forEach((a) => {
         counts[a.type]++;

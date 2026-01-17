@@ -40,6 +40,9 @@ export function setConnectionStatus(status: ConnectionStatus) {
     connectionStatus.set(status);
 }
 
+// updateStatus はsetConnectionStatusのエイリアス（後方互換性）
+export const updateStatus = setConnectionStatus;
+
 /**
  * 設定を更新
  */

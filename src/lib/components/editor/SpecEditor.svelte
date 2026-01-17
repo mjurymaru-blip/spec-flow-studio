@@ -85,12 +85,13 @@
 
 	// props.value が外部から変更された場合にエディタに反映
 	$effect(() => {
-		if (editorView && value !== editorView.state.doc.toString()) {
+		const currentValue = value; // 明示的にリアクティブ依存を作成
+		if (editorView && currentValue !== editorView.state.doc.toString()) {
 			editorView.dispatch({
 				changes: {
 					from: 0,
 					to: editorView.state.doc.length,
-					insert: value
+					insert: currentValue
 				}
 			});
 		}
