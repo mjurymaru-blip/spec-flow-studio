@@ -4,17 +4,25 @@ import { saveToStorage, loadFromStorage } from '$lib/utils/storage-utils';
 import { generateSpecPatch, applySpecPatch, revertSpecPatch, isPatchEmpty } from '$lib/utils/diff-utils';
 
 const STORAGE_KEY = 'spec-flow-studio:history';
+const CHECKPOINT_INTERVAL = 10; // 10パッチごとにチェックポイントを作成
+
+interface Checkpoint {
+    patchIndex: number; // このチェックポイントが有効なパッチインデックス
+    specs: AgentSpec[]; // その時点のSpecs状態
+}
 
 interface HistoryState {
     patches: SpecPatch[];
     currentIndex: number; // 現在適用されているパッチのインデックス (-1 = 初期状態)
     baseSpecs: AgentSpec[]; // 履歴の起点となるSpecs
+    checkpoints: Checkpoint[]; // パフォーマンス最適化用のチェックポイント
 }
 
 const DEFAULT_STATE: HistoryState = {
     patches: [],
     currentIndex: -1,
-    baseSpecs: []
+    baseSpecs: [],
+    checkpoints: []
 };
 
 function createHistoryStore() {
@@ -55,11 +63,24 @@ function createHistoryStore() {
                 // 現在位置より後のパッチを破棄（ブランチを切らない）
                 const newPatches = state.patches.slice(0, state.currentIndex + 1);
                 newPatches.push(patch);
+                const newIndex = newPatches.length - 1;
+
+                // 破棄されたパッチに関連するチェックポイントも削除
+                let newCheckpoints = state.checkpoints.filter(cp => cp.patchIndex <= state.currentIndex);
+
+                // チェックポイント作成（CHECKPOINT_INTERVALごと）
+                if (newIndex > 0 && newIndex % CHECKPOINT_INTERVAL === 0) {
+                    newCheckpoints = [...newCheckpoints, {
+                        patchIndex: newIndex,
+                        specs: afterSpecs
+                    }];
+                }
 
                 return {
                     ...state,
                     patches: newPatches,
-                    currentIndex: newPatches.length - 1
+                    currentIndex: newIndex,
+                    checkpoints: newCheckpoints
                 };
             });
 
@@ -74,7 +95,7 @@ function createHistoryStore() {
             if (state.currentIndex < 0) return null; // これ以上戻れない
 
             const targetIndex = state.currentIndex - 1;
-            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex);
+            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex, state.checkpoints);
 
             update((s) => ({ ...s, currentIndex: targetIndex }));
             return specs;
@@ -88,7 +109,7 @@ function createHistoryStore() {
             if (state.currentIndex >= state.patches.length - 1) return null; // これ以上進めない
 
             const targetIndex = state.currentIndex + 1;
-            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex);
+            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex, state.checkpoints);
 
             update((s) => ({ ...s, currentIndex: targetIndex }));
             return specs;
@@ -102,7 +123,7 @@ function createHistoryStore() {
             const targetIndex = state.patches.findIndex((p) => p.metadata.id === patchId);
             if (targetIndex === -1) return null;
 
-            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex);
+            const specs = rebuildSpecs(state.baseSpecs, state.patches, targetIndex, state.checkpoints);
             update((s) => ({ ...s, currentIndex: targetIndex }));
             return specs;
         },
@@ -112,7 +133,7 @@ function createHistoryStore() {
          */
         getCurrentSpecs: (): AgentSpec[] => {
             const state = get({ subscribe });
-            return rebuildSpecs(state.baseSpecs, state.patches, state.currentIndex);
+            return rebuildSpecs(state.baseSpecs, state.patches, state.currentIndex, state.checkpoints);
         },
 
         /**
@@ -126,10 +147,28 @@ function createHistoryStore() {
 
 /**
  * baseSpecsにパッチを順番に適用してtargetIndexまでの状態を再構築
+ * チェックポイントがあれば最も近いチェックポイントから開始
  */
-function rebuildSpecs(baseSpecs: AgentSpec[], patches: SpecPatch[], targetIndex: number): AgentSpec[] {
-    let specs = [...baseSpecs];
-    for (let i = 0; i <= targetIndex && i < patches.length; i++) {
+function rebuildSpecs(
+    baseSpecs: AgentSpec[],
+    patches: SpecPatch[],
+    targetIndex: number,
+    checkpoints: Checkpoint[] = []
+): AgentSpec[] {
+    // ターゲットより手前で最も近いチェックポイントを探す
+    let startSpecs = [...baseSpecs];
+    let startIndex = 0;
+
+    for (const cp of checkpoints) {
+        if (cp.patchIndex <= targetIndex && cp.patchIndex >= startIndex) {
+            startSpecs = [...cp.specs];
+            startIndex = cp.patchIndex + 1;
+        }
+    }
+
+    // チェックポイントからターゲットまでパッチを適用
+    let specs = startSpecs;
+    for (let i = startIndex; i <= targetIndex && i < patches.length; i++) {
         specs = applySpecPatch(specs, patches[i]);
     }
     return specs;

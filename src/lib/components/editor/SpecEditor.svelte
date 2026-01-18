@@ -11,6 +11,7 @@
 	import { oneDark } from '@codemirror/theme-one-dark';
 	import { keymap, Decoration, type DecorationSet } from '@codemirror/view';
 	import { defaultKeymap } from '@codemirror/commands';
+	import { specKitAutocomplete } from '$lib/utils/spec-kit-autocomplete';
 
 	interface Props {
 		value: string;
@@ -57,6 +58,7 @@
 				keymap.of(defaultKeymap),
 				yaml(),
 				oneDark,
+				specKitAutocomplete, // Spec-Kit自動補完
 				highlightLineField,
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) {

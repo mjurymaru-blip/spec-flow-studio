@@ -188,5 +188,8 @@ function broadcast(message: any) {
 }
 
 export default defineConfig({
-	plugins: [sveltekit(), webSocketPlugin()]
+	plugins: [sveltekit(), webSocketPlugin()],
+	server: {
+		port: 3001
+	}
 });

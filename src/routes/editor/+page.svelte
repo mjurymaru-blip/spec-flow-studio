@@ -38,6 +38,9 @@
 	let selectedArtifactType = $state<ArtifactType>('ui-mock');
 	let tempPassword = $state(''); // セッションにない場合の一時入力用
 
+	// 初回訪問フラグ
+	let isFirstVisit = $state(false);
+
 	// 履歴管理用の状態
 	let previousSpecs = $state<AgentSpec[]>([]);
 	let commitName = $state('');
@@ -57,8 +60,11 @@
 			historyStore.initialize($specs);
 			previousSpecs = [...$specs];
 		} else {
-			yamlContent = AGENT_TEMPLATE;
-			validateYaml(AGENT_TEMPLATE);
+			// 初回訪問：サンプルSpecを自動ロード
+			isFirstVisit = true;
+			yamlContent = ANALYZER_TEMPLATE; // より具体的なサンプル
+			validateYaml(ANALYZER_TEMPLATE);
+			currentTemplate = 'analyzer';
 		}
 	});
 
@@ -198,6 +204,7 @@
 				},
 				body: JSON.stringify({
 					spec: targetSpec,
+					specs: $specs, // Use Case Diagram用に全エージェントを送信
 					artifactType: selectedArtifactType,
 					model: $settings.geminiModel
 				})
@@ -210,6 +217,9 @@
 
 			const { content } = await response.json();
 
+			// Spec内のconstraintsを抽出
+			const allConstraints = $specs.flatMap((spec) => spec.constraints || []);
+
 			// Artifactストアに追加
 			addArtifact({
 				id: crypto.randomUUID(),
@@ -217,7 +227,8 @@
 				name: `${targetSpec.displayName} - ${selectedArtifactType}`,
 				content: content,
 				generatedAt: new Date().toISOString(),
-				specId: targetSpec.name
+				sourceSpec: targetSpec.name,
+				consideredConstraints: allConstraints.length > 0 ? allConstraints : undefined
 			});
 
 			showGenerateModal = false;
@@ -270,6 +281,32 @@
 			</Button>
 		</div>
 	</header>
+
+	<!-- 初回訪問者向けウェルカムバナー -->
+	{#if isFirstVisit}
+		<div class="welcome-banner">
+			<div class="welcome-content">
+				<span class="welcome-icon">🚀</span>
+				<div class="welcome-text">
+					<strong>Spec-Flow Studioへようこそ！</strong>
+					<p>
+						サンプルのAnalyzer Agentを読み込みました。「Generate Artifacts」で成果物を生成できます。
+					</p>
+				</div>
+			</div>
+			<div class="welcome-actions">
+				<Button
+					variant="accent"
+					size="sm"
+					onclick={startGeneration}
+					disabled={yamlErrors.length > 0}
+				>
+					✨ 今すぐ生成してみる
+				</Button>
+				<button class="dismiss-btn" onclick={() => (isFirstVisit = false)}>✕</button>
+			</div>
+		</div>
+	{/if}
 
 	<div class="editor-layout">
 		<!-- 左側: YAMLエディタ -->
@@ -583,5 +620,74 @@
 		display: flex;
 		justify-content: flex-end;
 		gap: var(--space-2);
+	}
+
+	/* Welcome Banner */
+	.welcome-banner {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: var(--space-4);
+		background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(0, 212, 255, 0.1));
+		border: 1px solid var(--color-accent-secondary);
+		border-radius: var(--radius-lg);
+		margin-bottom: var(--space-4);
+		animation: slide-in 0.3s ease-out;
+	}
+
+	@keyframes slide-in {
+		from {
+			opacity: 0;
+			transform: translateY(-10px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.welcome-content {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.welcome-icon {
+		font-size: 2rem;
+	}
+
+	.welcome-text strong {
+		display: block;
+		font-size: var(--font-size-base);
+		color: var(--color-text-primary);
+		margin-bottom: var(--space-1);
+	}
+
+	.welcome-text p {
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+		margin: 0;
+	}
+
+	.welcome-actions {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+	}
+
+	.dismiss-btn {
+		background: none;
+		border: none;
+		color: var(--color-text-muted);
+		font-size: var(--font-size-lg);
+		cursor: pointer;
+		padding: var(--space-1);
+		border-radius: var(--radius-sm);
+		transition: all 0.2s;
+	}
+
+	.dismiss-btn:hover {
+		color: var(--color-text-primary);
+		background: var(--color-bg-hover);
 	}
 </style>

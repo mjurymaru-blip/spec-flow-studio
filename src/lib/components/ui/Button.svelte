@@ -7,7 +7,7 @@
 	import type { HTMLButtonAttributes } from 'svelte/elements';
 
 	interface Props extends HTMLButtonAttributes {
-		variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+		variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
 		size?: 'sm' | 'md' | 'lg';
 		loading?: boolean;
 		children?: Snippet;
@@ -119,6 +119,17 @@
 	.btn--danger:hover:not(:disabled) {
 		background: #dc2626;
 		box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+	}
+
+	.btn--accent {
+		background: linear-gradient(135deg, var(--color-accent-secondary), var(--color-accent-primary));
+		color: white;
+		border-color: var(--color-accent-secondary);
+	}
+
+	.btn--accent:hover:not(:disabled) {
+		box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+		transform: translateY(-1px);
 	}
 
 	/* Loading */

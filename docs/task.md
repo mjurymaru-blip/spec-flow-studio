@@ -69,34 +69,54 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 ---
 
 ## Phase 7: GitHub公開 ✅
-- [x] README.md更新
+- [x] README.md更新（スクリーンショット・使い方・Spec-Kit形式）
 - [x] GitHubリポジトリ作成・公開
+
+---
+
+## Phase 8: 外部レビュー反映 (2026-01-17)
+
+### 🔴 高優先度 - ユーザー体験向上
+- [x] **初回体験改善**: サンプルSpec自動ロード＋ウェルカムバナー
+- [x] **constraints可視化強化**: 生成結果に「考慮したconstraint」バッジ表示
+- [x] **Spec-Kit schema (Zod)**: 禁止フィールド・危険constraints検出
+
+### 🟡 中優先度 - 開発者体験向上
+- [x] **エディタ自動補完**: Spec-Kit形式のautocomplete (CodeMirror拡張)
+- [x] **Side-by-Side Diffビューア**: 履歴ページで左右比較表示
+- [x] **履歴チェックポイント制**: パッチ増加時のスナップショット保存
+
+### 🟢 低優先度 - アーキテクチャ改善
+- [x] **domain層分離**: stores/から判断ロジックをdomain/に移行
+- [x] **IndexedDB移行**: localStorage 5MB制限対策
+- [x] **WebSocketイベントdebounce/throttle**: 通信頻発時の最適化
 
 ---
 
 ## 将来対応タスク (Backlog)
 
-### セキュリティ強化 (高優先度)
+### セキュリティ強化
 - [x] WebSocket認証 (HMAC-SHA256トークン検証)
 - [x] SSR時のStore漏洩リスク対策 (SSRオフで対応済み)
 - [ ] API CSRF対策
+- [ ] Gemini API Proxy化 (本番デプロイ時)
+- [ ] WebSocket origin/protocol version検証
 
-### UI/UX改善 (中優先度)
+### UI/UX改善
 - [x] Constraint → YAML行ジャンプ機能
 - [x] WebSocket接続状態のUI表示強化
-- [x] 操作手順チュートリアル/GIF追加
+- [x] 操作手順チュートリアル追加
+- [ ] アーティファクトのlazy render / 仮想スクロール
+- [ ] インタラクティブプレビュー (ui-mockのリンク動作)
 
-### パフォーマンス (中優先度)
-- [ ] 履歴のチェックポイント制 (大量パッチ対応)
+### パフォーマンス
 - [ ] Editor分割ロード最適化
-- [ ] WebSocketイベントのthrottle/debounce
+- [ ] Spec再パース効率化 (変更subtreeのみ更新)
 
-### アーキテクチャ (低優先度)
+### アーキテクチャ
 - [x] アーティファクトのlocalStorage永続化
 - [ ] integration-store責務分離 (connection/event/sync)
 - [ ] 履歴フィルタリング (エージェント別)
-- [ ] IndexedDB移行 (localStorage 5MB制限対策)
-- [ ] Gemini API Proxy化 (本番デプロイ時)
 - [ ] Swagger UI統合
 
 ---
@@ -104,4 +124,5 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 ## 進捗サマリー
 - **開始日**: 2026-01-15
 - **最終更新**: 2026-01-17
-- **状態**: Phase 1-7 完了、Backlog対応中
+- **状態**: Phase 1-7 完了、Phase 8 (外部レビュー反映) 開始
+- **外部レビュー**: ChatGPT・Geminiにてレビュー完了、改善点をPhase 8に反映

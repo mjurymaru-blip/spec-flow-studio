@@ -147,6 +147,7 @@ export interface Artifact {
     generatedAt: string; // ISO8601
     sourceSpec: string; // 生成元のSpec名
     rationale?: string; // AIの生成理由
+    consideredConstraints?: string[]; // 生成時に考慮した制約
 }
 
 // ========================================

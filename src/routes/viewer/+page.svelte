@@ -147,6 +147,19 @@
 		<div class="viewer-main">
 			{#if selectedArtifact}
 				<div class="artifact-content">
+					<!-- Constraints Badge -->
+					{#if selectedArtifact.consideredConstraints && selectedArtifact.consideredConstraints.length > 0}
+						<div class="constraints-badge">
+							<span class="badge-icon">🛡️</span>
+							<span class="badge-label">考慮した制約:</span>
+							<div class="constraint-tags">
+								{#each selectedArtifact.consideredConstraints as constraint}
+									<span class="constraint-tag">{constraint}</span>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
 					<!-- Preview Mode -->
 					<div class="content-view" class:hidden={viewMode !== 'preview'}>
 						{#if selectedArtifact.type === 'ui-mock'}
@@ -376,5 +389,42 @@
 
 	.underline {
 		text-decoration: underline;
+	}
+
+	/* Constraints Badge */
+	.constraints-badge {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--space-2);
+		padding: var(--space-3);
+		background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(251, 146, 60, 0.1));
+		border: 1px solid var(--color-accent-error);
+		border-radius: var(--radius-md);
+		margin-bottom: var(--space-3);
+	}
+
+	.badge-icon {
+		font-size: 1.2rem;
+	}
+
+	.badge-label {
+		font-size: var(--font-size-sm);
+		font-weight: 600;
+		color: var(--color-accent-error);
+		white-space: nowrap;
+	}
+
+	.constraint-tags {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-1);
+	}
+
+	.constraint-tag {
+		padding: var(--space-1) var(--space-2);
+		background: rgba(239, 68, 68, 0.2);
+		border-radius: var(--radius-sm);
+		font-size: var(--font-size-xs);
+		color: var(--color-text-primary);
 	}
 </style>
