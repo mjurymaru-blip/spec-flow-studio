@@ -106,16 +106,16 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 - [x] Constraint → YAML行ジャンプ機能
 - [x] WebSocket接続状態のUI表示強化
 - [x] 操作手順チュートリアル追加
-- [ ] アーティファクトのlazy render / 仮想スクロール
-- [ ] インタラクティブプレビュー (ui-mockのリンク動作)
+- [x] アーティファクトのlazy render / 仮想スクロール
+- [x] インタラクティブプレビュー (ui-mockのリンク動作)
 
 ### パフォーマンス
 - [x] Editor分割ロード最適化
-- [ ] Spec再パース効率化 (変更subtreeのみ更新)
+- [x] Spec再パース効率化 (変更subtreeのみ更新)
 
 ### アーキテクチャ
 - [x] アーティファクトのlocalStorage永続化
-- [ ] integration-store責務分離 (connection/event/sync)
+- [x] integration-store責務分離 (connection/event/sync)
 - [x] 履歴フィルタリング (エージェント別)
 - [x] Swagger UI統合
 

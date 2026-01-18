@@ -31,6 +31,58 @@ export function parseSpecYaml(content: string): AgentSpec[] {
   }
 }
 
+// キャッシュ用の構造
+interface ParseCache {
+  contentHash: string;
+  specs: AgentSpec[];
+}
+
+let parseCache: ParseCache | null = null;
+
+/**
+ * 文字列のハッシュを生成（簡易版）
+ */
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString(36);
+}
+
+/**
+ * キャッシュ付きYAMLパース（効率化版）
+ * 同じ内容の場合はキャッシュを返す
+ */
+export function parseSpecYamlCached(content: string): AgentSpec[] {
+  const contentHash = simpleHash(content);
+
+  // キャッシュがあり、ハッシュが一致すればキャッシュを返す
+  if (parseCache && parseCache.contentHash === contentHash) {
+    return parseCache.specs;
+  }
+
+  // 新しくパース
+  const specs = parseSpecYaml(content);
+
+  // キャッシュを更新
+  parseCache = {
+    contentHash,
+    specs
+  };
+
+  return specs;
+}
+
+/**
+ * キャッシュをクリア
+ */
+export function clearParseCache(): void {
+  parseCache = null;
+}
+
 /**
  * 単一のYAMLドキュメントをパース
  */

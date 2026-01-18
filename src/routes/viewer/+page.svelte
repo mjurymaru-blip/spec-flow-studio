@@ -44,6 +44,7 @@
 	// UI Mock プレビュー用のBlob URL
 	let previewUrl = $state<string | null>(null);
 	let lastArtifactId: string | null = null;
+	let interactiveMode = $state(false); // インタラクティブモード（リンク動作有効）
 
 	// selectedArtifact の ID を追跡して previewUrl を更新
 	$effect(() => {
@@ -165,8 +166,30 @@
 					<div class="content-view" class:hidden={viewMode !== 'preview'}>
 						{#if selectedArtifact.type === 'ui-mock'}
 							<div class="preview-container">
+								<div class="preview-toolbar">
+									<label class="interactive-toggle">
+										<input type="checkbox" bind:checked={interactiveMode} />
+										<span>🔗 インタラクティブモード</span>
+									</label>
+									<span class="toolbar-hint">
+										{interactiveMode ? 'リンクが動作します' : 'リンクは無効です'}
+									</span>
+								</div>
 								{#if previewUrl}
-									<iframe src={previewUrl} title="UI Preview" class="preview-iframe"></iframe>
+									{#if interactiveMode}
+										<iframe
+											src={previewUrl}
+											title="UI Preview (Interactive)"
+											class="preview-iframe interactive"
+										></iframe>
+									{:else}
+										<iframe
+											src={previewUrl}
+											title="UI Preview"
+											class="preview-iframe"
+											sandbox="allow-same-origin"
+										></iframe>
+									{/if}
 								{/if}
 							</div>
 						{:else if selectedArtifact.type === 'api-spec'}
@@ -442,5 +465,42 @@
 		border-radius: var(--radius-md);
 		overflow: auto;
 		max-height: 600px;
+	}
+
+	.preview-toolbar {
+		display: flex;
+		align-items: center;
+		gap: var(--space-4);
+		padding: var(--space-2) var(--space-3);
+		background: var(--color-bg-tertiary);
+		border-bottom: 1px solid var(--color-border-primary);
+	}
+
+	.interactive-toggle {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		cursor: pointer;
+		font-size: var(--font-size-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.interactive-toggle input {
+		width: 16px;
+		height: 16px;
+		accent-color: var(--color-accent-primary);
+	}
+
+	.interactive-toggle span {
+		user-select: none;
+	}
+
+	.toolbar-hint {
+		font-size: var(--font-size-xs);
+		color: var(--color-text-muted);
+	}
+
+	.preview-iframe.interactive {
+		border: 2px solid var(--color-accent-primary);
 	}
 </style>
