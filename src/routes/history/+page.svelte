@@ -77,6 +77,30 @@
 		showDiffModal = false;
 		selectedPatch = null;
 	}
+
+	// フィルタリング機能
+	let selectedAgent = $state<string>('all');
+
+	// すべてのエージェント名を抽出
+	const allAgents = $derived.by(() => {
+		const agents = new Set<string>();
+		for (const patch of $patches) {
+			for (const diff of patch.spec.diffs) {
+				agents.add(diff.agentName);
+			}
+		}
+		return Array.from(agents).sort();
+	});
+
+	// フィルタ済みパッチ
+	const filteredPatches = $derived.by(() => {
+		if (selectedAgent === 'all') {
+			return $patches;
+		}
+		return $patches.filter((patch) =>
+			patch.spec.diffs.some((diff) => diff.agentName === selectedAgent)
+		);
+	});
 </script>
 
 <div class="history-page">
@@ -86,6 +110,15 @@
 			<span class="patch-count">{$patches.length} パッチ</span>
 		</div>
 		<div class="header-right">
+			<!-- フィルタ UI -->
+			{#if allAgents.length > 0}
+				<select class="agent-filter" bind:value={selectedAgent}>
+					<option value="all">すべてのエージェント</option>
+					{#each allAgents as agent}
+						<option value={agent}>{agent}</option>
+					{/each}
+				</select>
+			{/if}
 			<Button variant="secondary" size="sm" onclick={handleUndo} disabled={!$canUndo}>
 				↶ 元に戻す
 			</Button>
@@ -107,11 +140,11 @@
 			</Panel>
 		{:else}
 			<div class="timeline">
-				{#each $patches as patch, index}
-					<div class="timeline-item" class:current={index === $currentPatchIndex}>
+				{#each filteredPatches as patch, index (patch.metadata.id)}
+					<div class="timeline-item" class:current={$patches.indexOf(patch) === $currentPatchIndex}>
 						<div class="timeline-marker">
 							<div class="marker-dot"></div>
-							{#if index < $patches.length - 1}
+							{#if index < filteredPatches.length - 1}
 								<div class="marker-line"></div>
 							{/if}
 						</div>
@@ -251,6 +284,27 @@
 	.header-right {
 		display: flex;
 		gap: var(--space-2);
+		align-items: center;
+	}
+
+	.agent-filter {
+		padding: var(--space-2) var(--space-3);
+		background: var(--color-bg-tertiary);
+		border: 1px solid var(--color-border-primary);
+		border-radius: var(--radius-md);
+		color: var(--color-text-primary);
+		font-size: var(--font-size-sm);
+		cursor: pointer;
+	}
+
+	.agent-filter:hover {
+		border-color: var(--color-accent-primary);
+	}
+
+	.agent-filter:focus {
+		outline: none;
+		border-color: var(--color-accent-primary);
+		box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
 	}
 
 	.empty-state {

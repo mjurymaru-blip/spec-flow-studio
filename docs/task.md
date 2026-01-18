@@ -98,7 +98,7 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 ### セキュリティ強化
 - [x] WebSocket認証 (HMAC-SHA256トークン検証)
 - [x] SSR時のStore漏洩リスク対策 (SSRオフで対応済み)
-- [ ] API CSRF対策
+- [x] API CSRF対策
 - [ ] Gemini API Proxy化 (本番デプロイ時)
 - [ ] WebSocket origin/protocol version検証
 
@@ -116,8 +116,8 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 ### アーキテクチャ
 - [x] アーティファクトのlocalStorage永続化
 - [ ] integration-store責務分離 (connection/event/sync)
-- [ ] 履歴フィルタリング (エージェント別)
-- [ ] Swagger UI統合
+- [x] 履歴フィルタリング (エージェント別)
+- [x] Swagger UI統合
 
 ---
 

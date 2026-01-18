@@ -10,6 +10,7 @@
 		{ href: '/editor', label: 'エディタ', icon: '✎' },
 		{ href: '/viewer', label: 'ビューア', icon: '◎' },
 		{ href: '/history', label: '履歴', icon: '⧖' },
+		{ href: '/api-docs', label: 'API Docs', icon: '📚' },
 		{ href: '/settings', label: '設定', icon: '⚙' }
 	];
 </script>
@@ -126,7 +127,8 @@
 	}
 
 	@keyframes pulse-glow {
-		0%, 100% {
+		0%,
+		100% {
 			text-shadow: 0 0 5px var(--color-accent-primary);
 		}
 		50% {

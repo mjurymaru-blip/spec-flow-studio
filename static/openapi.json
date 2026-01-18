@@ -1,0 +1,245 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "Spec-Flow Studio API",
+        "description": "Spec-Flow Studio の内部APIドキュメント",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "/api",
+            "description": "ローカル開発サーバー"
+        }
+    ],
+    "tags": [
+        {
+            "name": "generate",
+            "description": "AI生成物関連"
+        },
+        {
+            "name": "models",
+            "description": "Geminiモデル関連"
+        },
+        {
+            "name": "csrf",
+            "description": "CSRFトークン関連"
+        }
+    ],
+    "paths": {
+        "/generate": {
+            "post": {
+                "tags": [
+                    "generate"
+                ],
+                "summary": "AI生成物を生成",
+                "description": "Spec-Kit仕様から各種アーティファクト（UI Mock, API Spec, Test Case, Use Case Diagram）を生成します。",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GenerateRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "生成成功",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GenerateResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "不正なリクエスト"
+                    },
+                    "401": {
+                        "description": "APIキー未設定"
+                    },
+                    "500": {
+                        "description": "生成エラー"
+                    }
+                },
+                "security": [
+                    {
+                        "apiKey": []
+                    }
+                ]
+            }
+        },
+        "/models": {
+            "get": {
+                "tags": [
+                    "models"
+                ],
+                "summary": "利用可能なGeminiモデル一覧",
+                "description": "現在利用可能なGemini APIモデルの一覧を返します。",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ModelsResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/csrf": {
+            "get": {
+                "tags": [
+                    "csrf"
+                ],
+                "summary": "CSRFトークン取得",
+                "description": "CSRF対策用のトークンを発行し、Cookieにセットします。",
+                "responses": {
+                    "200": {
+                        "description": "成功",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CsrfResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "GenerateRequest": {
+                "type": "object",
+                "required": [
+                    "spec",
+                    "artifactType"
+                ],
+                "properties": {
+                    "spec": {
+                        "$ref": "#/components/schemas/AgentSpec"
+                    },
+                    "specs": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/AgentSpec"
+                        },
+                        "description": "Use Case Diagram生成時に必要"
+                    },
+                    "artifactType": {
+                        "type": "string",
+                        "enum": [
+                            "ui-mock",
+                            "api-spec",
+                            "test-case",
+                            "use-case-diagram"
+                        ]
+                    },
+                    "model": {
+                        "type": "string",
+                        "description": "使用するGeminiモデル名"
+                    }
+                }
+            },
+            "GenerateResponse": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "生成されたコンテンツ"
+                    }
+                }
+            },
+            "ModelsResponse": {
+                "type": "object",
+                "properties": {
+                    "models": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "CsrfResponse": {
+                "type": "object",
+                "properties": {
+                    "token": {
+                        "type": "string",
+                        "description": "CSRFトークン"
+                    },
+                    "headerName": {
+                        "type": "string",
+                        "description": "リクエストに含めるヘッダー名"
+                    }
+                }
+            },
+            "AgentSpec": {
+                "type": "object",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "type": "string"
+                    },
+                    "capabilities": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "constraints": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "communication": {
+                        "type": "object",
+                        "properties": {
+                            "canSendTo": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "canReceiveFrom": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "apiKey": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "x-api-key",
+                "description": "Gemini APIキー"
+            }
+        }
+    }
+}
