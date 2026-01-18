@@ -122,7 +122,7 @@ export interface IntegrationConfig {
  * デフォルトの連携設定
  */
 export const DEFAULT_INTEGRATION_CONFIG: IntegrationConfig = {
-    consoleUrl: 'ws://localhost:5173/api/ws',
+    consoleUrl: 'wss://localhost:3001/api/ws',
     autoSync: false,
     syncInterval: 5000
 };
