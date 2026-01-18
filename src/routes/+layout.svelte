@@ -2,6 +2,7 @@
 	import '../app.css';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import StatusBar from '$lib/components/StatusBar.svelte';
+	import { ToastContainer } from '$lib/components/ui';
 
 	let { children } = $props();
 </script>
@@ -16,6 +17,7 @@
 		{@render children()}
 	</main>
 	<StatusBar />
+	<ToastContainer />
 </div>
 
 <style>

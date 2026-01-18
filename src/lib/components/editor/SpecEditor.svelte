@@ -9,14 +9,17 @@
 	import type { EditorView } from '@codemirror/view';
 	import type { StateEffect, StateField } from '@codemirror/state';
 	import type { DecorationSet } from '@codemirror/view';
+	import type { YamlError } from '$lib/utils/yaml-utils';
+	import { fade, fly } from 'svelte/transition';
 
 	interface Props {
 		value: string;
+		errors?: YamlError[];
 		readonly?: boolean;
 		onChange?: (value: string) => void;
 	}
 
-	let { value = $bindable(), readonly = false, onChange }: Props = $props();
+	let { value = $bindable(), errors = [], readonly = false, onChange }: Props = $props();
 
 	let editorElement: HTMLElement;
 	let editorView: EditorView | null = null;
@@ -205,6 +208,29 @@
 		</div>
 	{/if}
 	<div class="editor-mount" bind:this={editorElement} class:hidden={isLoading}></div>
+
+	{#if errors.length > 0}
+		<div class="error-overlay" transition:fly={{ y: 20, duration: 300 }}>
+			<div class="error-header">
+				<span class="error-icon">⚠️</span>
+				<span class="error-title">Validation Errors ({errors.length})</span>
+			</div>
+			<div class="error-list">
+				{#each errors as error}
+					<button
+						class="error-item"
+						onclick={() => {
+							// エラー行は0-indexedの場合があるので+1を確認。js-yamlのmark.lineは0-indexed
+							gotoLine(error.line + 1);
+						}}
+					>
+						<span class="error-location">Line {error.line + 1}:</span>
+						<span class="error-message">{error.message}</span>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -267,5 +293,74 @@
 
 	:global(.cm-scroller) {
 		overflow: auto;
+	}
+
+	/* Error Overlay */
+	.error-overlay {
+		position: absolute;
+		bottom: var(--space-4);
+		left: var(--space-4);
+		right: var(--space-4);
+		background: rgba(40, 10, 10, 0.95);
+		border: 1px solid var(--color-accent-error);
+		border-radius: var(--radius-md);
+		padding: var(--space-3);
+		backdrop-filter: blur(4px);
+		box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+		z-index: 10;
+		max-height: 200px;
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.error-header {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		color: var(--color-accent-error);
+		font-weight: 600;
+		font-size: var(--font-size-sm);
+		padding-bottom: var(--space-2);
+		border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+	}
+
+	.error-list {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		overflow-y: auto;
+	}
+
+	.error-item {
+		display: flex;
+		gap: var(--space-2);
+		background: transparent;
+		border: none;
+		color: var(--color-text-primary);
+		font-size: var(--font-size-xs);
+		text-align: left;
+		cursor: pointer;
+		padding: var(--space-1) var(--space-2);
+		border-radius: var(--radius-sm);
+		transition: background 0.2s;
+		font-family: var(--font-mono);
+	}
+
+	.error-item:hover {
+		background: rgba(239, 68, 68, 0.1);
+	}
+
+	.error-location {
+		color: var(--color-accent-error);
+		font-weight: 600;
+		white-space: nowrap;
+	}
+
+	.error-message {
+		color: var(--color-text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 </style>

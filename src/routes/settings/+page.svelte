@@ -2,12 +2,20 @@
   Settings Page - 設定
 -->
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Panel, Button, StatusIndicator } from '$lib/components/ui';
 	import { integrationConfig, updateConfig } from '$lib/stores/integration-store';
 	import { settings } from '$lib/stores/settings-store';
 	import { session } from '$lib/stores/session-store';
+	import { resetDemo, hasCompletedDemo } from '$lib/stores/onboarding-store';
 	import { encryptData, decryptData } from '$lib/utils/crypto-utils';
 	import { saveToStorage, loadFromStorage, STORAGE_KEYS } from '$lib/utils/storage-utils';
+
+	// デモ再体験
+	function handleReplayDemo() {
+		resetDemo();
+		goto('/');
+	}
 
 	// Aether Console Settings
 	let consoleUrl = $state($integrationConfig.consoleUrl);
@@ -274,6 +282,19 @@
 						<p>ローカルに保存された全てのデータを削除</p>
 					</div>
 					<Button variant="danger" size="sm">削除</Button>
+				</div>
+			</div>
+		</Panel>
+
+		<!-- デモ再体験 -->
+		<Panel title="チュートリアル">
+			<div class="data-actions">
+				<div class="data-action">
+					<div class="data-action__info">
+						<h4>🎓 デモを再体験</h4>
+						<p>初回起動時のデモシナリオをもう一度体験できます</p>
+					</div>
+					<Button variant="secondary" size="sm" onclick={handleReplayDemo}>デモを開始</Button>
 				</div>
 			</div>
 		</Panel>

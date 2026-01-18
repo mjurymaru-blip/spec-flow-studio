@@ -2,12 +2,15 @@
 
 AI Agent Specification Editor with Diff Management — Companion tool for [Aether Console](https://github.com/mjurymaru-blip/aether-console).
 
+> **Target Audience**: AI System Architects & Engineers.
+> **For those who**: Need precise control over AI behaviors and want to enforce strict constraints (Governance) rather than just "Prompt Engineering".
+
 ## Overview
 
 Spec-Flow Studio is a **YAML-based specification editor** for defining AI agent behaviors. It enables:
 
 - 📝 **Spec-Kit Editor** — Edit agent specifications with syntax highlighting
-- 🔍 **Constraint Visualization** — Highlight constraints that govern AI behavior
+- 🔍 **Constraint Enforcement** — Visualize constraints and validate compliance with real-time feedback
 - ✨ **AI Artifact Generation** — Generate UI mocks, API specs, test cases via Gemini API
 - 📊 **Communication Diagrams** — Visualize agent interactions with Mermaid
 - 🔄 **Diff Management** — Track specification changes with version history
@@ -40,6 +43,9 @@ npm run build
 デフォルトで `http://localhost:5173` で起動します。
 
 ## Tech Stack
+
+> **Note**: This project uses `@vitejs/plugin-basic-ssl` for HTTPS development server to prevent Mixed Content errors with Aether Console. You may see a browser warning about self-signed certificate. Please accept to proceed.
+> HTTPS URL: `https://localhost:3001`
 
 | Category | Technology |
 |----------|------------|
@@ -162,8 +168,10 @@ Spec-Flow Studio connects to Aether Console via WebSocket:
 
 ```
 Aether Console (localhost:5173) ⟷ Spec-Flow Studio (localhost:3001)
-                                   WebSocket: ws://localhost:3001/api/ws
+                                   WebSocket: wss://localhost:3001/api/ws
 ```
+
+For detailed protocol specification, see [WEBSOCKET_API.md](./WEBSOCKET_API.md).
 
 単体利用も可能です。接続状態が「Disconnected」でも全機能を利用できます。
 

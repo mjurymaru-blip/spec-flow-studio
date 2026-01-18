@@ -4,9 +4,11 @@
 -->
 <script lang="ts">
 	import { Panel, Button, StatusIndicator } from '$lib/components/ui';
+	import { OnboardingFlow } from '$lib/components/onboarding';
 	import { specs, currentSpecName, hasSpec } from '$lib/stores/spec-store';
 	import { latestArtifacts, artifactCounts, hasArtifacts } from '$lib/stores/artifact-store';
 	import { connectionStatus, patchCount } from '$lib/stores/integration-store';
+	import { isOnboardingActive } from '$lib/stores/onboarding-store';
 
 	const statusMap = {
 		disconnected: 'offline',
@@ -24,6 +26,11 @@
 
 	let currentStatus = $derived(statusMap[$connectionStatus]);
 </script>
+
+<!-- 強制デモシナリオ（初回のみ） -->
+{#if $isOnboardingActive}
+	<OnboardingFlow />
+{/if}
 
 <div class="dashboard">
 	<header class="dashboard__header">
@@ -48,9 +55,7 @@
 				<div class="empty-state">
 					<span class="empty-state__icon">◇</span>
 					<p class="empty-state__text">仕様が読み込まれていません</p>
-					<Button variant="primary" size="sm">
-						エディタを開く
-					</Button>
+					<Button variant="primary" size="sm">エディタを開く</Button>
 				</div>
 			{/if}
 		</Panel>
@@ -88,7 +93,9 @@
 						{#each Object.entries($artifactCounts) as [type, count]}
 							<div class="artifacts-summary__item">
 								<span class="artifacts-summary__count">{count}</span>
-								<span class="artifacts-summary__type">{artifactTypeLabels[type as keyof typeof artifactTypeLabels]}</span>
+								<span class="artifacts-summary__type"
+									>{artifactTypeLabels[type as keyof typeof artifactTypeLabels]}</span
+								>
 							</div>
 						{/each}
 					</div>

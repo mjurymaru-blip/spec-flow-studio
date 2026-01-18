@@ -4,10 +4,12 @@
 -->
 <script lang="ts">
 	import { StatusIndicator } from '$lib/components/ui';
+	import FlowStepBar from '$lib/components/FlowStepBar.svelte';
 	import { connectionStatus } from '$lib/stores/integration-store';
 	import { specCount } from '$lib/stores/spec-store';
 	import { artifacts } from '$lib/stores/artifact-store';
-	import { wsStatus } from '$lib/services/websocket';
+	import { wsStatus, activityLog } from '$lib/services/websocket';
+	import { fade } from 'svelte/transition';
 
 	// 接続状態をStatusIndicatorのstatus形式に変換
 	const statusMap = {
@@ -28,7 +30,7 @@
 	let currentStatus = $derived(statusMap[$connectionStatus]);
 	let statusLabel = $derived(statusLabelMap[$wsStatus]);
 	let artifactCount = $derived($artifacts.length);
-	
+
 	// 時刻更新
 	let currentTime = $state(new Date());
 	$effect(() => {
@@ -36,6 +38,23 @@
 			currentTime = new Date();
 		}, 1000);
 		return () => clearInterval(interval);
+		return () => clearInterval(interval);
+	});
+
+	// アクティビティログの表示管理
+	let logMessage = $state<{ text: string; type: string } | null>(null);
+	let logTimer: ReturnType<typeof setTimeout> | null = null;
+
+	$effect(() => {
+		if ($activityLog) {
+			logMessage = { text: $activityLog.message, type: $activityLog.type };
+
+			if (logTimer) clearTimeout(logTimer);
+
+			logTimer = setTimeout(() => {
+				logMessage = null;
+			}, 3000); // 3秒後に消える
+		}
 	});
 </script>
 
@@ -43,13 +62,28 @@
 	<div class="statusbar__left">
 		<div class="statusbar__connection">
 			<StatusIndicator status={currentStatus} size="sm" pulse={$wsStatus === 'connected'} />
-			<span class="statusbar__connection-label" class:connected={$wsStatus === 'connected'}>
-				{statusLabel}
-			</span>
+			<div class="status-text-container">
+				{#if logMessage}
+					<span
+						class="statusbar__log"
+						class:success={logMessage.type === 'success'}
+						class:error={logMessage.type === 'error'}
+						transition:fade={{ duration: 200 }}
+					>
+						{logMessage.text}
+					</span>
+				{:else}
+					<span
+						class="statusbar__connection-label"
+						class:connected={$wsStatus === 'connected'}
+						transition:fade={{ duration: 200 }}
+					>
+						{statusLabel}
+					</span>
+				{/if}
+			</div>
 		</div>
-	</div>
-
-	<div class="statusbar__center">
+		<span class="statusbar__divider">|</span>
 		<span class="statusbar__info">
 			<span class="statusbar__label">Specs:</span>
 			<span class="statusbar__value">{$specCount}</span>
@@ -61,9 +95,17 @@
 		</span>
 	</div>
 
+	<div class="statusbar__center">
+		<FlowStepBar />
+	</div>
+
 	<div class="statusbar__right">
 		<span class="statusbar__time font-mono">
-			{currentTime.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+			{currentTime.toLocaleTimeString('ja-JP', {
+				hour: '2-digit',
+				minute: '2-digit',
+				second: '2-digit'
+			})}
 		</span>
 	</div>
 </footer>
@@ -97,12 +139,35 @@
 		gap: var(--space-2);
 	}
 
-	.statusbar__connection-label {
+	.status-text-container {
+		position: relative;
+		min-width: 120px;
+		height: 20px;
+		display: flex;
+		align-items: center;
+	}
+
+	.statusbar__connection-label,
+	.statusbar__log {
 		font-size: var(--font-size-xs);
 		color: var(--color-text-muted);
 		transition: color var(--transition-fast);
+		position: absolute;
+		left: 0;
+		white-space: nowrap;
 	}
 
+	.statusbar__log {
+		color: var(--color-text-primary);
+		font-weight: 500;
+	}
+
+	.statusbar__log.success {
+		color: var(--color-accent-success);
+	}
+	.statusbar__log.error {
+		color: var(--color-accent-error);
+	}
 	.statusbar__connection-label.connected {
 		color: var(--color-accent-success);
 	}

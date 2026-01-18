@@ -20,6 +20,7 @@
 	import { decryptData } from '$lib/utils/crypto-utils';
 	import { addArtifact } from '$lib/stores/artifact-store';
 	import { historyStore, canUndo, canRedo } from '$lib/stores/history-store';
+	import { showSuccessToast, showErrorToast } from '$lib/stores/toast-store';
 	import { stringifyYaml } from '$lib/utils/yaml-utils';
 	import { buildCommunicationDiagram } from '$lib/utils/prompt-utils';
 	import type { YamlError } from '$lib/utils/yaml-utils';
@@ -232,11 +233,14 @@
 			});
 
 			showGenerateModal = false;
-			alert('生成が完了しました！ビューアで確認できます。');
+			showSuccessToast(
+				'生成が完了しました！',
+				allConstraints.length > 0 ? allConstraints.length : undefined
+			);
 			goto('/viewer'); // ビューアへ遷移
 		} catch (error) {
 			console.error('Generation error:', error);
-			alert(`生成エラー: ${error instanceof Error ? error.message : 'Unknown error'}`);
+			showErrorToast('生成エラー', error instanceof Error ? error.message : 'Unknown error');
 		} finally {
 			isGenerating = false;
 			tempPassword = '';
@@ -311,7 +315,12 @@
 	<div class="editor-layout">
 		<!-- 左側: YAMLエディタ -->
 		<div class="editor-main">
-			<SpecEditor bind:this={specEditor} bind:value={yamlContent} onChange={handleChange} />
+			<SpecEditor
+				bind:this={specEditor}
+				bind:value={yamlContent}
+				errors={yamlErrors}
+				onChange={handleChange}
+			/>
 		</div>
 
 		<!-- 右側: プレビュー & 情報 -->

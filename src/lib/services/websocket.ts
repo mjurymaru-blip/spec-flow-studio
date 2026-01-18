@@ -21,6 +21,13 @@ export const wsStatus = writable<ConnectionStatus>('disconnected');
 // 受信メッセージストア（最新のもの）
 export const lastReceivedEvent = writable<ConsoleToStudioEvent | null>(null);
 
+// アクティビティログ（直近の通信イベント）
+export const activityLog = writable<{ message: string; type: 'info' | 'success' | 'warning' | 'error'; timestamp: number } | null>(null);
+
+function logActivity(message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+    activityLog.set({ message, type, timestamp: Date.now() });
+}
+
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
@@ -52,6 +59,7 @@ export function connect() {
             console.log('WebSocket connected to Aether Console');
             wsStatus.set('connected');
             updateStatus('connected');
+            logActivity('Aether Consoleに接続しました', 'success');
             reconnectAttempts = 0;
         };
 
@@ -133,6 +141,14 @@ export function send(event: StudioToConsoleEvent) {
 
     try {
         ws.send(JSON.stringify(event));
+
+        // ログ表示（イベントタイプに応じてメッセージを変える）
+        if (event.type === 'PATCH_CREATED') {
+            logActivity('パッチを送信中...', 'info');
+        } else if (event.type === 'SPEC_UPDATED') {
+            logActivity('Spec更新を同期中...', 'info');
+        }
+
         return true;
     } catch (e) {
         console.error('Failed to send WebSocket message:', e);
@@ -156,27 +172,32 @@ function handleMessage(event: ConsoleToStudioEvent) {
                 agents: currentSpecs,
                 patches: currentPatches
             });
+            logActivity('同期リクエストを受信しました', 'info');
             break;
 
         case 'PATCH_APPLIED':
             // Consoleでパッチが適用された通知
             console.log('Patch applied on Console:', event.patch.metadata.name);
+            logActivity(`パッチが適用されました: ${event.patch.metadata.name}`, 'success');
             // TODO: 必要に応じてローカル状態を更新
             break;
 
         case 'PATCH_REVERTED':
             // Consoleでパッチがリバートされた通知
             console.log('Patch reverted on Console:', event.patchId);
+            logActivity('パッチが取り消されました', 'warning');
             break;
 
         case 'AGENT_EXECUTED':
             // エージェント実行通知
             console.log(`Agent ${event.agentName} executed`);
+            logActivity(`エージェント実行: ${event.agentName}`, 'info');
             break;
 
         case 'PROPOSAL_GENERATED':
             // 提案生成通知
             console.log('Proposal generated:', event.proposal);
+            logActivity('提案が生成されました', 'success');
             break;
 
         default:

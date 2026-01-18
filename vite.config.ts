@@ -1,6 +1,7 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 import { WebSocketServer } from 'ws';
+import basicSsl from '@vitejs/plugin-basic-ssl';
 import type { ViteDevServer } from 'vite';
 import type { IncomingMessage } from 'http';
 import { createHash, randomBytes } from 'crypto';
@@ -210,7 +211,7 @@ function broadcast(message: any) {
 }
 
 export default defineConfig({
-	plugins: [sveltekit(), webSocketPlugin()],
+	plugins: [sveltekit(), basicSsl(), webSocketPlugin()],
 	server: {
 		port: 3001
 	}
