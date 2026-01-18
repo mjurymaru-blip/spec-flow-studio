@@ -7,6 +7,7 @@
 	import { Panel, Button } from '$lib/components/ui';
 	import { artifacts, removeArtifact, latestArtifacts } from '$lib/stores/artifact-store';
 	import { SpecEditor } from '$lib/components/editor';
+	import MermaidDiagram from '$lib/components/MermaidDiagram.svelte';
 	import type { Artifact } from '$lib/types';
 
 	// 状態
@@ -172,6 +173,13 @@
 							<div class="api-preview-placeholder">
 								<p>OpenAPIプレビューは現在コードモードのみ対応しています。</p>
 								<Button size="sm" onclick={() => (viewMode = 'code')}>コードを表示</Button>
+							</div>
+						{:else if selectedArtifact.type === 'use-case-diagram'}
+							<div class="mermaid-preview">
+								<MermaidDiagram
+									code={selectedArtifact.content}
+									id="usecase-{selectedArtifact.id}"
+								/>
 							</div>
 						{:else}
 							<div class="text-preview">
@@ -426,5 +434,13 @@
 		border-radius: var(--radius-sm);
 		font-size: var(--font-size-xs);
 		color: var(--color-text-primary);
+	}
+
+	.mermaid-preview {
+		padding: var(--space-4);
+		background: var(--color-bg-secondary);
+		border-radius: var(--radius-md);
+		overflow: auto;
+		max-height: 600px;
 	}
 </style>
