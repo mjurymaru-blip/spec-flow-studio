@@ -1,14 +1,27 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateContent } from '$lib/server/gemini';
+import { getServerApiKey, loadProxyConfig } from '$lib/server/gemini-proxy';
 import { buildUiPrompt, buildApiPrompt, buildTestCasePrompt, buildUseCasePrompt } from '$lib/utils/prompt-utils';
 import type { AgentSpec } from '$lib/types';
 
 export const POST: RequestHandler = async ({ request }) => {
-    const apiKey = request.headers.get('x-api-key');
+    // プロキシモード: サーバー設定のAPIキーを優先
+    const serverApiKey = getServerApiKey();
+    const clientApiKey = request.headers.get('x-api-key');
+    const apiKey = serverApiKey || clientApiKey;
 
     if (!apiKey) {
         return json({ error: 'API Key is required' }, { status: 401 });
+    }
+
+    // オリジン検証（プロキシモード時）
+    if (serverApiKey) {
+        const config = loadProxyConfig();
+        const origin = request.headers.get('origin');
+        if (origin && !config.allowedOrigins.includes(origin)) {
+            return json({ error: 'Origin not allowed' }, { status: 403 });
+        }
     }
 
     try {

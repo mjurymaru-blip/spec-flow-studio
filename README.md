@@ -120,14 +120,39 @@ spec:
 
 ## API Key Configuration
 
-Gemini APIを利用するには、設定ページでAPIキーを登録します。
+### 開発モード（個人利用）
+
+設定ページでAPIキーを登録します：
 
 1. 「設定」ページを開く
 2. **Gemini API Key** を入力
 3. **暗号化パスワード** を設定
 4. 「APIキーを保存」をクリック
 
-> **Security**: APIキーはブラウザ内で暗号化（AES-GCM）され、サーバーには送信されません。
+> **Security**: APIキーはブラウザ内で暗号化（AES-GCM）され、localStorageに保存されます。サーバーには送信されません。
+
+### 本番モード（共有デプロイ）
+
+本番環境では、サーバー側でAPIキーを管理できます（プロキシモード）：
+
+```bash
+# 環境変数を設定
+export GEMINI_API_KEY=your-api-key-here
+export NODE_ENV=production
+export WS_ALLOWED_ORIGINS=https://your-domain.com
+
+# サーバー起動
+npm run build && npm run preview
+```
+
+| 環境変数 | 説明 |
+|----------|------|
+| `GEMINI_API_KEY` | Gemini APIキー（設定するとユーザー入力不要） |
+| `NODE_ENV` | `production`で厳格なセキュリティ検証を有効化 |
+| `WS_ALLOWED_ORIGINS` | 許可するオリジン（カンマ区切り） |
+| `WS_SECRET` | WebSocket認証用シークレット |
+
+> **Note**: `GEMINI_API_KEY`を設定すると、ユーザーはAPIキーを入力せずに生成機能を利用できます。
 
 ---
 

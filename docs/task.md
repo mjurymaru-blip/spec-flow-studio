@@ -99,8 +99,8 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 - [x] WebSocket認証 (HMAC-SHA256トークン検証)
 - [x] SSR時のStore漏洩リスク対策 (SSRオフで対応済み)
 - [x] API CSRF対策
-- [ ] Gemini API Proxy化 (本番デプロイ時)
-- [ ] WebSocket origin/protocol version検証
+- [x] Gemini API Proxy化 (本番デプロイ時)
+- [x] WebSocket origin/protocol version検証
 
 ### UI/UX改善
 - [x] Constraint → YAML行ジャンプ機能
@@ -110,7 +110,7 @@ Spec-Flow Studio の開発タスク一覧。完了済み・進行中・将来対
 - [ ] インタラクティブプレビュー (ui-mockのリンク動作)
 
 ### パフォーマンス
-- [ ] Editor分割ロード最適化
+- [x] Editor分割ロード最適化
 - [ ] Spec再パース効率化 (変更subtreeのみ更新)
 
 ### アーキテクチャ

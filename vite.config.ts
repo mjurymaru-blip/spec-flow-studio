@@ -12,6 +12,14 @@ import { createHash, randomBytes } from 'crypto';
 // 共有シークレット（環境変数から取得、なければランダム生成）
 const WS_SECRET = process.env.WS_SECRET || randomBytes(32).toString('hex');
 
+// 許可されたオリジン（環境変数または開発用デフォルト）
+const ALLOWED_ORIGINS = process.env.WS_ALLOWED_ORIGINS
+	? process.env.WS_ALLOWED_ORIGINS.split(',')
+	: ['http://localhost:3001', 'http://localhost:5173', 'http://127.0.0.1:3001', 'http://127.0.0.1:5173'];
+
+// 本番モードかどうか
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 // 認証済みクライアント（トークン → WebSocket）
 const authenticatedClients = new Map<string, import('ws').WebSocket>();
 
@@ -53,8 +61,22 @@ function verifyConnection(request: IncomingMessage): { valid: boolean; clientId?
 		return { valid: true, clientId: clientId || 'unknown' };
 	}
 
-	// Origin検証（localhost のみ許可）
+	// Origin検証（許可オリジンリストをチェック）
 	const origin = request.headers.origin;
+	if (origin && ALLOWED_ORIGINS.includes(origin)) {
+		if (!IS_PRODUCTION) {
+			console.warn('[WebSocket] ⚠️ Allowing origin without valid token (dev mode):', origin);
+		}
+		return { valid: !IS_PRODUCTION, clientId: clientId || 'origin-' + Date.now() };
+	}
+
+	// 本番モードでは厳格に拒否
+	if (IS_PRODUCTION) {
+		console.error('[WebSocket] ❌ Production mode: rejecting unauthorized connection');
+		return { valid: false };
+	}
+
+	// 開発モードではlocalhostを許可
 	if (origin && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
 		console.warn('[WebSocket] ⚠️ Allowing localhost origin without valid token');
 		return { valid: true, clientId: clientId || 'localhost-' + Date.now() };
