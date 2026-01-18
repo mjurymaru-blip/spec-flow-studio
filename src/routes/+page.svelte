@@ -9,6 +9,7 @@
 	import { latestArtifacts, artifactCounts, hasArtifacts } from '$lib/stores/artifact-store';
 	import { connectionStatus, patchCount } from '$lib/stores/integration-store';
 	import { isOnboardingActive } from '$lib/stores/onboarding-store';
+	import { connect } from '$lib/services/websocket';
 
 	const statusMap = {
 		disconnected: 'offline',
@@ -76,10 +77,10 @@
 						<p>接続を試行中...</p>
 					{:else if $connectionStatus === 'error'}
 						<p class="text-error">接続エラー</p>
-						<Button variant="secondary" size="sm">再接続</Button>
+						<Button variant="secondary" size="sm" onclick={connect}>再接続</Button>
 					{:else}
 						<p>未接続</p>
-						<Button variant="primary" size="sm">接続</Button>
+						<Button variant="primary" size="sm" onclick={connect}>接続</Button>
 					{/if}
 				</div>
 			</div>
